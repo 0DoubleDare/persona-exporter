@@ -10,10 +10,7 @@ procfs = "0.18.0"
 postcard = "1.1.3"
 
 [dependencies]
-paas-core = { workspace = true }
-#persona-exporter-types = { version = "0.1.1" }
-persona-exporter-types = { path = "../persona-exporter-types"}
-# Метрики
+persona-exporter-types = { version = "0.1.4", features = ["serde"] }
 sysinfo = { version = "0.39.3" , features = ["system"]}
 
 tokio = { version = "1.52.2", features = ["full"] }

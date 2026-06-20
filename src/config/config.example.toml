@@ -1,6 +1,7 @@
 [agent]
 # Интервал отправки метрик в секундах. Чем меньше - тем больше нагрузка на систему
 send_metrics_interval = 5
+debug_mode = false
 
 [server]
 # Уникальный ключ авторизации вашего сервера
@@ -8,15 +9,14 @@ server_key = "your_generated_token"
 # Куда будут отправляться данные (API сервер или напрямую в дешборд)
 server_url = "http://persona-rs.com/metrics"
 
+[metrics.components]
+enabled = true
+
 [metrics.disks]
 enabled = true
-# Не будет считать диски докера
-mount_points = [ "/" ]
-filter = { only = [], enabled = false }
 
 [metrics.cpu]
 enabled = true
-filter = { expect = [], enabled = false}
 
 [metrics.system]
 enabled = true

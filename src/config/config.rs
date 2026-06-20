@@ -1,12 +1,14 @@
+use config::{Config, ConfigError, File};
+use persona_exporter_types::ComponentInfo;
+use serde::Deserialize;
 use std::env;
 use std::path::PathBuf;
-use config::{Config, ConfigError, File};
-use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct AgentConfigFile {
     pub agent: AgentSection,
     pub server: ServerSection,
+    pub metrics: MetricsConfig,
 }
 
 #[derive(Deserialize, Debug)]
@@ -15,30 +17,43 @@ pub struct MetricsConfig {
     pub disks: DisksConfig,
     pub network: NetworkConfig,
     pub system: SystemConfig,
+    pub components: ComponentsConfig,
 }
 
 #[derive(Deserialize, Debug)]
+pub struct ComponentsConfig {
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+#[derive(Deserialize, Debug)]
 pub struct CpuConfig {
-
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct DisksConfig {
-
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct NetworkConfig {
-
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct SystemConfig {
-
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
 }
+
 #[derive(Deserialize, Debug)]
 pub struct AgentSection {
     pub send_metrics_interval: u64,
+    #[serde(default)]
+    pub debug_mode: bool,
 }
 
 #[derive(Deserialize, Debug)]
@@ -58,12 +73,14 @@ impl AgentConfigFile {
         if !config_path.exists() {
             if let Some(parent) = config_path.parent() {
                 std::fs::create_dir_all(parent).map_err(|e| {
-                    ConfigError::Message("Не удалось создать директорию".to_string())
+                    ConfigError::Message(format!("Не удалось создать директорию: {e}"))
                 })?;
             }
 
             std::fs::write(&config_path, DEFAULT_CONFIG_CONTENT).map_err(|e| {
-                ConfigError::Message("Не удалось заполнить конфиг данными по умолчанию".to_string())
+                ConfigError::Message(format!(
+                    "Не удалось заполнить конфиг данными по умолчанию: {e}"
+                ))
             })?;
         }
 
@@ -74,4 +91,7 @@ impl AgentConfigFile {
 
         s.try_deserialize()
     }
+}
+fn default_enabled() -> bool {
+    true
 }
