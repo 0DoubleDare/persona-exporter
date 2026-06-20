@@ -59,8 +59,8 @@ async fn main() {
         let (sys_info, cpu_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
-                Some(collect_system_metrics(s)),
-                Some(collect_cpus_metrics(s)),
+                config.metrics.system.enabled.then(|| collect_system_metrics(s)),
+                config.metrics.cpu.enabled.then(|| collect_cpus_metrics(s)),
             )
         } else {
             (None, None)
