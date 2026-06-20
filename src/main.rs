@@ -1,21 +1,28 @@
+mod metrics;
+
 use std::alloc::System;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Disks, Networks, Components};
 use tokio::time::sleep;
 use paas_core::structures::agent_config::AgentConfigFile;
-use paas_core::structures::server_metrics::ServerMetrics;
+// use paas_core::structures::server_metrics::ServerMetrics;
+use persona_exporter_types::ServerMetrics;
+use crate::metrics::*;
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().with_env_filter("info").init();
+    let client = reqwest::Client::new();
 
     let mut sys = sysinfo::System::new();
     let mut disks = Disks::new_with_refreshed_list();
     let mut networks = Networks::new_with_refreshed_list();
     let mut components = Components::new_with_refreshed_list();
 
+    
     tracing::info!("Starting persona-persona-exporter");
 
+    // println!("{}", sys.);
     let config = loop {
         match AgentConfigFile::new() {
             Ok(value) => {
@@ -38,20 +45,39 @@ async fn main() {
         for component in &components {
             println!("{:#?}", component);
         }
-        let sys_info = ServerMetrics::collect_system_metrics(&mut sys);
-
-        let disk_info = ServerMetrics::collect_disk_metrics(&mut disks,  "/");
-
-        let network_info = ServerMetrics::collect_network_metrics(&mut networks);
-
+        let sys_info = collect_system_metrics(&mut sys);
+        let disk_info = collect_disk_metrics(&mut disks,  "/");
+        let network_info = collect_network_metrics(&mut networks);
+        let cpu_info = collect_cpus_metrics(&mut sys, &mut components);
+        // let machine_metrics = ServerMetrics {
+        //     stssys_info,
+        //     disk_info,
+        //     network_data: network_info,
+        //     timestamp: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64,
+        // };
         let machine_metrics = ServerMetrics {
             sys_info,
             disk_info,
             network_data: network_info,
+            cpu_info,
             timestamp: SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_millis() as u64,
         };
 
         tracing::info!("Machine metrics: {:#?}", machine_metrics);
+        let response = client.post(&config.server.server_url)
+            .json(&machine_metrics)
+            .send()
+            .await;
+
+        match response {
+            Ok(response) => {
+                tracing::info!("Success to send server metrics to URL: {:#?}", response)
+            },
+            Err(err) => {
+                tracing::error!("Failed to send webhook: {}", err);
+            }
+        }
+
         sleep(Duration::from_secs(config.agent.send_metrics_interval)).await;
     }
 }
