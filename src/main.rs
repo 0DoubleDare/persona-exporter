@@ -5,13 +5,14 @@ use tokio::time::sleep;
 use persona_exporter::config::AgentConfigFile;
 use persona_exporter::metrics::*;
 use persona_exporter_types::ServerMetrics;
+use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 
 #[tokio::main]
 async fn main() {
     let config = loop {
         match AgentConfigFile::new() {
             Ok(value) => {
-                tracing::debug!("Config file parsed successfully");
+                tracing::info!("Config file parsed successfully");
                 break value;
             }
             Err(err) => {
@@ -21,7 +22,6 @@ async fn main() {
             }
         };
     };
-
     tracing_subscriber::fmt()
         .with_env_filter(if config.agent.debug_mode {
             "debug"
@@ -30,11 +30,18 @@ async fn main() {
         })
         .init();
 
+    let mut headers = HeaderMap::new();
+    let auth_key = format!("Bearer: {}", config.server.server_key);
+
+    if let Ok(mut header_val) = HeaderValue::from_str(&auth_key) {
+        header_val.set_sensitive(true);
+        headers.insert(AUTHORIZATION, header_val);
+    }
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
+        .default_headers(headers)
         .build()
         .unwrap();
-
     let mut sys = (config.metrics.system.enabled || config.metrics.cpu.enabled)
         .then(|| sysinfo::System::new());
     let mut disks = config
@@ -59,7 +66,11 @@ async fn main() {
         let (sys_info, cpu_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
-                config.metrics.system.enabled.then(|| collect_system_metrics(s)),
+                config
+                    .metrics
+                    .system
+                    .enabled
+                    .then(|| collect_system_metrics(s)),
                 config.metrics.cpu.enabled.then(|| collect_cpus_metrics(s)),
             )
         } else {
