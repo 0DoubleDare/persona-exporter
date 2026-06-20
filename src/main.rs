@@ -55,27 +55,30 @@ async fn main() {
 
     tracing::info!("Starting persona-exporter");
 
-    // println!("{}", sys.);
-
     loop {
-        // components.expect("REASON").refresh(false);
-        let sys_info = sys.as_mut().map(|s| collect_system_metrics(s));
-        let disk_info = disks.as_mut().map(|d| collect_disk_metrics(d, "/"));
-        let network_info = networks.as_mut().map(|n| collect_network_metrics(n));
-        let cpu_info = sys.as_mut().map(|s| collect_cpus_metrics(s));
-        let components_info = components.as_mut().map(|c| collect_components_metrics(c));
-        // let mut sys_info = if let Some(ref mut system) = sys {
-        //     collect_system_metrics(system);
-        // };
-        // let sys_info = sys.is_some().then(|| collect_system_metrics(&mut sys));
-        // if config.metrics.system.enabled {
-        //     let sys_info = collect_system_metrics(&mut sys);
-        // }
-        // let disk_info = collect_disk_metrics(&mut disks, "/");
-        // let network_info = collect_network_metrics(&mut networks);
-        //
-        // let components_info = collect_components_metrics(&mut components);
-        // let cpu_info = collect_cpus_metrics(&mut sys, components_info);
+        let (sys_info, cpu_info) = if let Some(ref mut s) = sys {
+            s.refresh_all();
+            (
+                Some(collect_system_metrics(s)),
+                Some(collect_cpus_metrics(s)),
+            )
+        } else {
+            (None, None)
+        };
+
+        let disk_info = disks.as_mut().map(|d| {
+            d.refresh(false);
+
+            collect_disk_metrics(d, "/")
+        });
+        let network_info = networks.as_mut().map(|n| {
+            n.refresh(false);
+            collect_network_metrics(n)
+        });
+        let components_info = components.as_mut().map(|c| {
+            c.refresh(false);
+            collect_components_metrics(c)
+        });
 
         let machine_metrics = ServerMetrics {
             system: sys_info,

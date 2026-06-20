@@ -3,8 +3,6 @@ use std::path::Path;
 use sysinfo::{Components, Disks, Networks, System};
 
 pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
-    sys.refresh_all();
-
     let physical_core_count = System::physical_core_count();
 
     CpuInfo {
@@ -15,7 +13,6 @@ pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
 }
 
 pub fn collect_system_metrics(sys: &mut System) -> SystemInfo {
-
     let total_memory = sys.total_memory();
     let used_memory = sys.used_memory();
     let total_swap = sys.total_swap();
@@ -47,8 +44,6 @@ pub fn collect_disk_metrics(disks: &mut Disks, mount_point: &str) -> DiskInfo {
         .find(|disk| disk.mount_point() == Path::new(&mount_point));
 
     if let Some(disk) = disk {
-        disk.refresh();
-
         let total_space = disk.total_space();
         let available_space = disk.available_space();
 
@@ -68,8 +63,6 @@ pub fn collect_disk_metrics(disks: &mut Disks, mount_point: &str) -> DiskInfo {
 }
 
 pub fn collect_network_metrics(networks: &mut Networks) -> NetworkInfo {
-    networks.refresh(false);
-
     let main_interface = networks
         .iter()
         .filter(|(name, _)| {
@@ -101,8 +94,6 @@ pub fn collect_network_metrics(networks: &mut Networks) -> NetworkInfo {
 }
 
 pub fn collect_components_metrics(components: &mut Components) -> ComponentsInfo {
-    components.refresh(false);
-
     let components_info = components
         .iter()
         .map(|c| ComponentInfo {
