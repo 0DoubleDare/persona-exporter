@@ -103,12 +103,12 @@ jobs:
         id: version
         run: |
           VERSION=$(grep -E '^version = ' Cargo.toml | head -n 1 | cut -d '"' -f 2)
-          echo 'version=$VERSION' >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Upload release
         uses: softprops/action-gh-release@v2
         with:
-          files: persona-exporter-*
+          files: persona-exporter*
           generate_release_notes: true
           tag_name: v${{ steps.version.outputs.version }}
           name: Release v${{ steps.version.outputs.version }}
