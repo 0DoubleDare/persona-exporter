@@ -1,14 +1,22 @@
+use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
 use tokio::time::sleep;
 // use paas_core::structures::server_metrics::ServerMetrics;
 use persona_exporter::config::AgentConfigFile;
 use persona_exporter::metrics::*;
-use persona_exporter_types::ServerMetrics;
-use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
+use persona_exporter_types::{ConvertTo, DataUnit, ServerMetrics};
 
 #[tokio::main]
 async fn main() {
+    let debug_mode: bool = env::var("DEBUG_MODE")
+        .unwrap_or_else(|_| "false".to_string())
+        .parse()
+        .unwrap_or(false);
+    tracing_subscriber::fmt()
+        .with_env_filter(if debug_mode { "debug" } else { "info" })
+        .init();
+    println!("Open app");
     let config = loop {
         match AgentConfigFile::new() {
             Ok(value) => {
@@ -22,27 +30,14 @@ async fn main() {
             }
         };
     };
-    tracing_subscriber::fmt()
-        .with_env_filter(if config.agent.debug_mode {
-            "debug"
-        } else {
-            "info"
-        })
-        .init();
 
-    let mut headers = HeaderMap::new();
-    let auth_key = format!("Bearer: {}", config.server.server_key);
-
-    if let Ok(mut header_val) = HeaderValue::from_str(&auth_key) {
-        header_val.set_sensitive(true);
-        headers.insert(AUTHORIZATION, header_val);
-    }
+    tracing::info!("Exporter initialized");
+    let auth_token = config.server.server_key;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
-        .default_headers(headers)
         .build()
         .unwrap();
-    let mut sys = (config.metrics.system.enabled || config.metrics.cpu.enabled)
+    let mut sys = (config.metrics.cpu.enabled || config.metrics.memory.enabled)
         .then(|| sysinfo::System::new());
     let mut disks = config
         .metrics
@@ -63,14 +58,14 @@ async fn main() {
     tracing::info!("Starting persona-exporter");
 
     loop {
-        let (sys_info, cpu_info) = if let Some(ref mut s) = sys {
+        let (mem_info, cpu_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
                 config
                     .metrics
-                    .system
+                    .memory
                     .enabled
-                    .then(|| collect_system_metrics(s)),
+                    .then(|| collect_memory_metrics(s)),
                 config.metrics.cpu.enabled.then(|| collect_cpus_metrics(s)),
             )
         } else {
@@ -90,9 +85,15 @@ async fn main() {
             c.refresh(false);
             collect_components_metrics(c)
         });
+        let sys_info = config
+            .metrics
+            .system
+            .enabled
+            .then(|| collect_system_metrics());
 
         let machine_metrics = ServerMetrics {
             system: sys_info,
+            memory: mem_info,
             disk: disk_info,
             network: network_info,
             cpu: cpu_info,
@@ -106,16 +107,17 @@ async fn main() {
         tracing::info!("Machine metrics: {:#?}", machine_metrics);
         let response = client
             .post(&config.server.server_url)
+            .bearer_auth(&auth_token)
             .json(&machine_metrics)
             .send()
             .await;
-        tracing::info!("Send data to server...");
+        tracing::info!("Sending data to a specified URL");
         match response {
             Ok(response) => {
-                tracing::info!("Get server response: {}", response.status())
+                tracing::info!("Response from the server: {}", response.status())
             }
             Err(err) => {
-                tracing::error!("Failed to send webhook: {}", err);
+                tracing::error!("Send error: {}", err);
             }
         }
 

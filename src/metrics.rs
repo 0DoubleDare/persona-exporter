@@ -12,9 +12,10 @@ pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
     }
 }
 
-pub fn collect_system_metrics(sys: &mut System) -> SystemInfo {
+pub fn collect_memory_metrics(sys: &mut System) -> MemoryInfo {
     let total_memory = sys.total_memory();
     let used_memory = sys.used_memory();
+    let free_memory = sys.free_memory();
     let total_swap = sys.total_swap();
     let used_swap = sys.used_swap();
     let free_swap = sys.free_swap();
@@ -27,9 +28,10 @@ pub fn collect_system_metrics(sys: &mut System) -> SystemInfo {
         fifteen: load_avg.fifteen as f32,
     };
 
-    SystemInfo {
+    MemoryInfo {
         total_memory,
         used_memory,
+        free_memory,
         total_swap,
         used_swap,
         free_swap,
@@ -109,5 +111,20 @@ pub fn collect_components_metrics(components: &mut Components) -> ComponentsInfo
         count: components.len(),
         is_empty: components.is_empty(),
         components: components_info,
+    }
+}
+
+pub fn collect_system_metrics() -> SystemInfo {
+    SystemInfo {
+        name: System::name().unwrap_or(String::from("unknown")),
+        kernel_long_version: System::kernel_long_version(),
+        kernel_version: System::kernel_version().unwrap_or(String::from("unknown")),
+        distribution_id: System::distribution_id(),
+        distribution_id_like: System::distribution_id_like(),
+        cpu_arch: System::cpu_arch(),
+        boot_time: System::boot_time(),
+        uptime: System::uptime(),
+        os_version: System::os_version().unwrap_or(String::from("unknown")),
+        host_name: System::host_name().unwrap_or(String::from("unknown")),
     }
 }

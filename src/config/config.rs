@@ -18,6 +18,13 @@ pub struct MetricsConfig {
     pub network: NetworkConfig,
     pub system: SystemConfig,
     pub components: ComponentsConfig,
+    pub memory: MemoryConfig,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct MemoryConfig {
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug)]
