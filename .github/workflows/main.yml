@@ -39,12 +39,12 @@ jobs:
             
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact: persona-exporter
+            artifact_name: persona-exporter
             asset_name: persona-exporter-macos.tar.gz
             
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: persona-exporter.exe
+            artifact_name: persona-exporter.exe
             asset_name: persona-exporter-windows.zip
     steps:
       - name: Checkout code
@@ -58,11 +58,17 @@ jobs:
       - name: Build project
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Prepare artifact for linux / macos
-        if: matrix.os != 'windows-latest'
+      - name: Prepare artifact for MacOS
+        if: matrix.os == 'macos-latest'
         run: |
           cd target/${{ matrix.target }}/release/
-          COPYFILE_DISABLE=1 tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}/
+          zip -r "../../../${{ matrix.asset_name }}" ${{ matrix.artifact_name}}
+
+      - name: Prepare artifact for linux
+        if: matrix.os == 'linux-latest'
+        run: |
+          cd target/${{ matrix.target }}/release/
+          COPYFILE_DISABLE=1 tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
 
       - name: Prepare artifact for windows
         if: matrix.os == 'windows-latest'
