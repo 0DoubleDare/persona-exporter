@@ -25,7 +25,7 @@ jobs:
           cargo doc --test
 
   build:
-    name: Build ащк ${{ matrix.os }}
+    name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -66,8 +66,30 @@ jobs:
       - name: Prepare artifact for windows
         if: matrix.os == 'windows-latest'
         run: |
-          Compress-Archive -Path target/${{ matrix.target }}/release/${{ matrix.artifact_name }} 
+          Compress-Archive -Path target/${{ matrix.target }}/release/${{ matrix.artifact_name }} \ 
           -DestinationPath ${{ matrix.asset_name }}
           
-          
-          
+      - name: Upload temporary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+          retention-days: 1
+
+  release:
+    name: Release to Github Releases
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: persona-exporter-*
+          merge-multiple: true
+
+      - name: Upload release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: persona-exporter-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
