@@ -87,6 +87,7 @@ jobs:
     name: Release to Github Releases
     needs: build
     runs-on: ubuntu-latest
+    environment: persona-exporter
     permissions:
       contents: write
     steps:
