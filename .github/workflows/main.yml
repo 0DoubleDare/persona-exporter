@@ -40,7 +40,7 @@ jobs:
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact_name: persona-exporter
-            asset_name: persona-exporter-macos.tar.gz
+            asset_name: persona-exporter-macos.zip
             
           - os: windows-latest
             target: x86_64-pc-windows-msvc
@@ -74,7 +74,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         run: |
           Compress-Archive -Path target/${{ matrix.target }}/release/${{ matrix.artifact_name }}/ \ 
-          -DestinationPath ${{ matrix.asset_name }}
+          -DestinationPath ${{ github.workspace }}/${{ matrix.asset_name }}
           
       - name: Upload temporary artifact
         uses: actions/upload-artifact@v4
