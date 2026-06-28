@@ -74,8 +74,7 @@ jobs:
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
-          Compress-Archive -Path "target\${{ matrix.target }}\release\${{ matrix.artifact_name }}" \ 
-          -DestinationPath "${{ github.workspace }}\${{ matrix.asset_name }}"
+          Compress-Archive -Path "target\${{ matrix.target }}\release\${{ matrix.artifact_name }}" -DestinationPath "${{ github.workspace }}\${{ matrix.asset_name }}"
           
       - name: Upload temporary artifact
         uses: actions/upload-artifact@v4
