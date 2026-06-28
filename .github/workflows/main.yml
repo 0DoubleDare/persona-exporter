@@ -27,6 +27,7 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: test
     strategy:
       fail-fast: true
       matrix:
@@ -61,7 +62,7 @@ jobs:
         if: matrix.os != 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release/
-          tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}/
+          COPYFILE_DISABLE=1 tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}/
 
       - name: Prepare artifact for windows
         if: matrix.os == 'windows-latest'
