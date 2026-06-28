@@ -75,7 +75,7 @@ jobs:
         shell: pwsh
         run: |
           Compress-Archive -Path "target\${{ matrix.target }}\release\${{ matrix.artifact_name }}" -DestinationPath "${{ github.workspace }}\${{ matrix.asset_name }}"
-          
+
       - name: Upload temporary artifact
         uses: actions/upload-artifact@v4
         with:
@@ -90,15 +90,27 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           pattern: persona-exporter-*
           merge-multiple: true
 
+      - name: Get version from Cargo.toml
+        id: version
+        run: |
+          VERSION=$(grep -E '^version = ' Cargo.toml | head -n 1 | cut -d '"' -f 2)
+          echo 'version=$VERSION' >> $GITHUB_OUTPUT
+
       - name: Upload release
         uses: softprops/action-gh-release@v2
         with:
           files: persona-exporter-*
+          generate_release_notes: true
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
