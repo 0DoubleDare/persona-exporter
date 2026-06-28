@@ -1,0 +1,73 @@
+name: Build and test 
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test code
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Test fmt
+        run: cargo fmt --all -- --check
+
+      - name: Test code
+        run: |
+          cargo test
+          cargo doc --test
+
+  build:
+    name: Build ащк ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: persona-exporter-linux
+            asset_name: persona-exporter-linux.tar.gz
+            
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: persona-exporter
+            asset_name: persona-exporter-macos.tar.gz
+            
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: persona-exporter.exe
+            asset_name: persona-exporter-windows.zip
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolany/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+        
+      - name: Build project
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifact for linux / macos
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+
+      - name: Prepare artifact for windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          Compress-Archive -Path target/${{ matrix.target }}/release/${{ matrix.artifact_name }} 
+          -DestinationPath ${{ matrix.asset_name }}
+          
+          
+          
