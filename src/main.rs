@@ -55,9 +55,12 @@ async fn main() {
         .enabled
         .then(|| Components::new_with_refreshed_list());
 
+    let await_sec = config.agent.send_metrics_interval;
     tracing::info!("Starting persona-exporter");
 
     loop {
+        tracing::info!("Collect metrics...");
+
         let (mem_info, cpu_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
@@ -121,6 +124,9 @@ async fn main() {
             }
         }
 
-        sleep(Duration::from_secs(config.agent.send_metrics_interval)).await;
+        for s in (1..=await_sec).rev() {
+            tracing::info!("Await {} seconds", s);
+            sleep(Duration::from_secs(1)).await;
+        }
     }
 }
