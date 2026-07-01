@@ -64,13 +64,15 @@ jobs:
           cd target/${{ matrix.target }}/release/
           zip -r "../../../${{ matrix.asset_name }}" ${{ matrix.artifact_name}}
 
-      - name: Prepare artifact for linux
-        if: matrix.os == 'linux-latest'
+      # TODO: Фиксануть загрузку линукс бинарника, сейчас выдает ошибку
+      # "No files were found with the provided path: persona-exporter-linux.tar.gz. No artifacts will be uploaded."
+      - name: Prepare artifact for Linux
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          cd target/${{ matrix.target }}/release/
-          COPYFILE_DISABLE=1 tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
+          cd target/${{ matrix.target }}/release
+          tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
 
-      - name: Prepare artifact for windows
+      - name: Prepare artifact for Windows
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
@@ -87,6 +89,7 @@ jobs:
     name: Release to Github Releases
     needs: build
     runs-on: ubuntu-latest
+    environment: persona-exporter
     permissions:
       contents: write
     steps:
