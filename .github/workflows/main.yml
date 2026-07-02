@@ -2,7 +2,10 @@ name: Build and test
 
 on:
   push:
+    tags:
+      - "v*"
     branches:
+      - develop
       - main
 
 jobs:
@@ -24,9 +27,25 @@ jobs:
           cargo test
           cargo test --doc
 
+  alert-failure-test:
+    name: If test job is failure
+    needs: test
+    runs-on: ubuntu-latest
+    if: ${{ failure() }}
+    steps:
+      - name: Failure
+        uses: notify-events/github-action@main
+        with:
+          token: ${{ secrets.NOTIFY_EVENTS_TOKEN }}
+          title: 'Report!'
+          text: 'Test is down: ${{ github.ref }}'
+          priority: highest
+          level: error
+
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    if: startsWith(github.ref, 'refs/tags/') && github.event.base_ref == 'refs/heads/main'
     needs: test
     strategy:
       fail-fast: true
@@ -64,8 +83,6 @@ jobs:
           cd target/${{ matrix.target }}/release/
           zip -r "../../../${{ matrix.asset_name }}" ${{ matrix.artifact_name}}
 
-      # TODO: Фиксануть загрузку линукс бинарника, сейчас выдает ошибку
-      # "No files were found with the provided path: persona-exporter-linux.tar.gz. No artifacts will be uploaded."
       - name: Prepare artifact for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -87,6 +104,7 @@ jobs:
 
   release:
     name: Release to Github Releases
+    if: github.event.base_ref == 'refs/haeds/main' && startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     environment: persona-exporter
@@ -111,6 +129,8 @@ jobs:
       - name: Upload release
         uses: softprops/action-gh-release@v2
         with:
+#          Создание релиза как черновик
+          draft: true
           files: persona-exporter*
           generate_release_notes: true
           tag_name: v${{ steps.version.outputs.version }}
