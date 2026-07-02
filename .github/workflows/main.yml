@@ -32,13 +32,19 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: ${{ failure() }}
+    env:
+      NODE_OPTIONS: "--no-deprecation"
     steps:
       - name: Failure
         uses: notify-events/github-action@main
         with:
           token: ${{ secrets.NOTIFY_EVENTS_TOKEN }}
-          title: 'Report!'
-          text: 'Test is down: ${{ github.ref }}'
+          title: 'Pipeline is <b>FAILURE</b> in "${{ github.repository}}"'
+          text: |
+            Test is down: ${{ github.ref_name }}, pipeline №${{ github.run_number }}
+            Commit: ${{ github.sha }} 
+            Pipeline link: ${{ github.server_url}}/${{ github.repository }}/actions/run/${{ github.run_id}}
+
           priority: highest
           level: error
 
