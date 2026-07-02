@@ -47,6 +47,25 @@ jobs:
           priority: highest
           level: error
 
+  notify-success-test:
+    name: All test is passed
+    runs-on: ubuntu-latest
+    needs: test
+    if: ${{ success() }}
+    env:
+      NODE_OPTION: "--no-depricated"
+    steps:
+      - name: Success
+        uses: notify-events/github-action@main
+        with:
+          token: ${{ secrets.NORIFY_EVENTS_TOKEN }}
+          title: Success test job
+          text: |
+            Testing successful! Proceeding to build the application...
+            <p><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">Pipeline view №${{ github.run_number }}</a></p>
+          priority: low
+          level: success
+
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
