@@ -36,7 +36,7 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    if: startsWith(github.ref, 'refs/tags/') && github.event.base_ref == 'refs/heads/main'
+    if: startsWith(github.ref, 'refs/tags/') && github.event.base_ref == 'refs/heads/main' && success()
     needs: test
     strategy:
       fail-fast: true
@@ -67,7 +67,7 @@ jobs:
 #        uses: dtolnay/rust-toolchain@stable
 #        with:
 #          target: ${{ matrix.target }}
-        
+
       - name: Build project
         run: cargo build --release --target ${{ matrix.target }}
 
