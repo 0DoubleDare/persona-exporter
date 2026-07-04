@@ -71,7 +71,7 @@ pub struct ServerSection {
 
 impl AgentConfigFile {
     pub fn new() -> Result<Self, ConfigError> {
-        const DEFAULT_CONFIG_CONTENT: &str = include_str!("./config.example.toml");
+        const DEFAULT_CONFIG_CONTENT: &str = include_str!("config.example.toml");
 
         let config_path = env::var("PERSONA_CONFIG_PATH")
             .map(PathBuf::from)
