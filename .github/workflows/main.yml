@@ -16,7 +16,7 @@ jobs:
     name: Test code
     runs-on: ubuntu-latest
     steps:
-      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install.yml@main
+      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install_rust.yml@yml
 #      - name: Checkout code
 #        uses: actions/checkout@v4
 #
