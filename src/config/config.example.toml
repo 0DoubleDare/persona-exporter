@@ -1,0 +1,37 @@
+[agent]
+# Интервал отправки метрик в секундах. Чем меньше - тем больше нагрузка на систему
+send_metrics_interval = 5
+debug_mode = false
+
+[server]
+key = '''
+A unique authorization key for your server.
+Can be stored in an environment variable:
+export PERSONA_AGENT__SERVER__SERVER_KEY="your_server_key"
+'''
+server_key = "your_generated_token"
+# Куда будут отправляться данные (API сервер или напрямую в дешборд)
+url = '''
+target URL to which metrics will be sent.
+Like the server key, the URL can be written to an environment variable:
+export PERSONA_AGENT__SERVER__SERVER_URL='your_target_url'
+'''
+server_url = "http://persona-rs.com/metrics"
+
+[metrics.components]
+enabled = true
+
+[metrics.disks]
+enabled = true
+
+[metrics.cpu]
+enabled = true
+
+[metrics.system]
+enabled = true
+
+[metrics.memory]
+enabled = true
+
+[metrics.network]
+enabled = true
