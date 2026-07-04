@@ -1,18 +1,16 @@
 name: Checkout And Install Rust
 
-on:
-  workflow_call:
-    inputs:
-      build_target:
-        required: false
-        type: string
+inputs:
+  build_target:
+    required: false
+    default: ''
+    type: string
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          target: ${{ inputs.build_target }}
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v4
+    - name: Install rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        target: ${{ inputs.build_target }}
