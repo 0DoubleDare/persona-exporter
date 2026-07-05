@@ -16,7 +16,7 @@ jobs:
     name: Test code
     runs-on: ubuntu-latest
     steps:
-      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install_rust.yml@yml
+      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install_rust.yml@main
 #      - name: Checkout code
 #        uses: actions/checkout@v4
 #
@@ -57,7 +57,7 @@ jobs:
             artifact_name: persona-exporter.exe
             asset_name: persona-exporter-windows.zip
     steps:
-      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install.yml@main
+      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install_rust.yml@main
         with:
           build_target: ${{ matrix.target }}
 #      - name: Checkout code
