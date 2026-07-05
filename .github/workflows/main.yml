@@ -3,7 +3,6 @@ name: Build and test
 on:
   push:
     branches:
-      - develop
       - main
   pull_request:
     branches:
@@ -14,6 +13,7 @@ jobs:
   test:
     name: Test code
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
 
