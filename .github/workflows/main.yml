@@ -57,7 +57,7 @@ jobs:
             artifact_name: persona-exporter.exe
             asset_name: persona-exporter-windows.zip
     steps:
-      - uses: 0DoubleDare/persona-exporter/.github/workflows/checkout_and_install_rust.yml@develop
+      - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
         with:
           target: ${{ matrix.target }}
 #      - name: Checkout code
