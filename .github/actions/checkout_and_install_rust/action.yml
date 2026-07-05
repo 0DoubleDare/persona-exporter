@@ -16,3 +16,6 @@ runs:
       uses: dtolnay/rust-toolchain@stable
       with:
         target: ${{ inputs.target }}
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2
