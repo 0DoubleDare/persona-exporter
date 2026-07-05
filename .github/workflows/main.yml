@@ -2,14 +2,13 @@ name: Build and test
 
 on:
   push:
-    tags:
-      - "v*"
     branches:
       - develop
       - main
   pull_request:
     branches:
       - main
+      - develop
 
 jobs:
   test:
@@ -17,11 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#
-#      - name: Install toolchain
-#        uses: dtolnay/rust-toolchain@stable
 
       - name: Test fmt
         run: |
@@ -36,7 +30,7 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     strategy:
       fail-fast: true
@@ -60,13 +54,6 @@ jobs:
       - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
         with:
           target: ${{ matrix.target }}
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#
-#      - name: Install toolchain
-#        uses: dtolnay/rust-toolchain@stable
-#        with:
-#          target: ${{ matrix.target }}
 
       - name: Build project
         run: cargo build --release --target ${{ matrix.target }}
@@ -98,7 +85,7 @@ jobs:
 
   release:
     name: Release to Github Releases
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     environment: persona-exporter
