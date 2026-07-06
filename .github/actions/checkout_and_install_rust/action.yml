@@ -1,4 +1,5 @@
 name: Checkout And Install Rust
+description: Checkout, install and cashing rust
 
 inputs:
   target:

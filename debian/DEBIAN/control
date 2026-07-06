@@ -1,0 +1,11 @@
+Package: persona-exporter
+Version: 0.2.0
+Section: util
+Priority: optional
+Architecture: amd64
+Depends: libc6, systemd
+Maintainer: Lider Nikita my-email@gmail.com
+Description: Lightweight system metrics exporter for Prometheus
+             A lightweight exporter written in Rust that monitors core system
+             metrics such as CPU, RAM, Disk space, and component temperatures.
+             Designed with a focus on a "set-and-forget" approach.

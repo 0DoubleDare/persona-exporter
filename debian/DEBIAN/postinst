@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = "configure" ]; then
+  echo "Setting up persona-exporter"
+
+  systemctl daemon-reload
+  systemctl enable --now persona-exporter.service
+  systemctl restart persona-exporter.service
+fi
+
+exit 0

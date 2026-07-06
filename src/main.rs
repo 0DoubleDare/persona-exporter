@@ -1,11 +1,12 @@
+// use paas_core::structures::server_metrics::ServerMetrics;
+// use persona_exporter::AgentConfigFile;
+use persona_exporter::configs::AgentConfigFile;
+use persona_exporter::metrics::*;
+use persona_exporter_types::ServerMetrics;
 use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
 use tokio::time::sleep;
-// use paas_core::structures::server_metrics::ServerMetrics;
-use persona_exporter::config::AgentConfigFile;
-use persona_exporter::metrics::*;
-use persona_exporter_types::{ConvertTo, DataUnit, ServerMetrics};
 
 #[tokio::main]
 async fn main() {
@@ -24,7 +25,7 @@ async fn main() {
                 break value;
             }
             Err(err) => {
-                tracing::error!("Failed to parse config file: {}", err);
+                tracing::error!("Failed to parse configs file: {}", err);
                 tracing::warn!("Wait 10sec to reload...");
                 sleep(Duration::from_secs(10)).await;
             }
@@ -37,23 +38,23 @@ async fn main() {
         .timeout(Duration::from_secs(10))
         .build()
         .unwrap();
-    let mut sys = (config.metrics.cpu.enabled || config.metrics.memory.enabled)
-        .then(|| sysinfo::System::new());
+    let mut sys =
+        (config.metrics.cpu.enabled || config.metrics.memory.enabled).then(sysinfo::System::new);
     let mut disks = config
         .metrics
         .disks
         .enabled
-        .then(|| Disks::new_with_refreshed_list());
+        .then(Disks::new_with_refreshed_list);
     let mut networks = config
         .metrics
         .network
         .enabled
-        .then(|| Networks::new_with_refreshed_list());
+        .then(Networks::new_with_refreshed_list);
     let mut components = config
         .metrics
         .components
         .enabled
-        .then(|| Components::new_with_refreshed_list());
+        .then(Components::new_with_refreshed_list);
 
     let await_sec = config.agent.send_metrics_interval;
     tracing::info!("Starting persona-exporter");
@@ -88,11 +89,7 @@ async fn main() {
             c.refresh(false);
             collect_components_metrics(c)
         });
-        let sys_info = config
-            .metrics
-            .system
-            .enabled
-            .then(|| collect_system_metrics());
+        let sys_info = config.metrics.system.enabled.then(collect_system_metrics);
 
         let machine_metrics = ServerMetrics {
             system: sys_info,
@@ -124,9 +121,7 @@ async fn main() {
             }
         }
 
-        for s in (1..=await_sec).rev() {
-            tracing::info!("Await {} seconds", s);
-            sleep(Duration::from_secs(1)).await;
-        }
+        tracing::info!("Next metrics before {} seconds", await_sec);
+        sleep(Duration::from_secs(await_sec)).await;
     }
 }

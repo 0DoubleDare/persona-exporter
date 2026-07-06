@@ -1,6 +1,8 @@
 pub mod metrics;
 
-pub mod config {
-    mod config;
-    pub use config::*;
+pub mod configs {
+    mod config_structs;
+    pub use config_structs::*;
 }
+
+pub mod machines;

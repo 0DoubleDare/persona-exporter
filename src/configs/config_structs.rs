@@ -1,5 +1,4 @@
 use config::{Config, ConfigError, File};
-use persona_exporter_types::ComponentInfo;
 use serde::Deserialize;
 use std::env;
 use std::path::PathBuf;
@@ -75,7 +74,7 @@ impl AgentConfigFile {
 
         let config_path = env::var("PERSONA_CONFIG_PATH")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/etc/persona-rs-agent/config.toml"));
+            .unwrap_or_else(|_| PathBuf::from("/etc/persona-rs-agent/configs.toml"));
 
         if !config_path.exists() {
             if let Some(parent) = config_path.parent() {

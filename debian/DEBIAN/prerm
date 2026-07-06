@@ -1,0 +1,14 @@
+#!/bin/bash
+set -e
+
+if [ "$1" = "remove" ] && [ "$1" = "deconfigure" ]; then
+  echo "Delete service before delete persona-exporter"
+
+  if systemctl is-active --quiet persona-exporter.service; then
+    systemctl stop persona-exporter.service
+  fi
+
+  systemctl disable persona-exporter.service
+fi
+
+exit 0

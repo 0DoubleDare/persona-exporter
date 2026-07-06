@@ -3,6 +3,10 @@
 send_metrics_interval = 5
 debug_mode = false
 
+#failure_trigger = false
+
+#max_secs_to_disconnect = 500
+
 [server]
 key = '''
 A unique authorization key for your server.

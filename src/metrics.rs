@@ -74,19 +74,37 @@ pub fn collect_network_metrics(networks: &mut Networks) -> NetworkInfo {
         .max_by_key(|(_, data)| data.total_received() + data.total_transmitted())
         .map(|(name, _)| name.clone());
 
-    if let Some(interface) = main_interface {
-        if let Some(data) = networks.get(&interface) {
-            // println!("{}", data.)
-            return NetworkInfo {
-                interface_name: interface,
-                total_rx_bytes: data.total_received(),
-                total_tx_bytes: data.total_transmitted(),
-                total_rx_packets: data.total_packets_received(),
-                total_tx_packets: data.total_packets_transmitted(),
-                total_rx_errors: data.total_errors_on_received(),
-                total_tx_errors: data.total_errors_on_transmitted(),
-            };
-        }
+    // if let Some(interface) = main_interface {
+    //     if let Some(data) = networks.get(&interface) {
+    //         println!("{}", data.)
+    // return NetworkInfo {
+    //     interface_name: interface,
+    //     total_rx_bytes: data.total_received(),
+    //     total_tx_bytes: data.total_transmitted(),
+    //     total_rx_packets: data.total_packets_received(),
+    //     total_tx_packets: data.total_packets_transmitted(),
+    //     total_rx_errors: data.total_errors_on_received(),
+    //     total_tx_errors: data.total_errors_on_transmitted(),
+    // };
+    // }
+    // }
+
+    // if let (Some(interface), Some(data)) = (main_interface, networks.get(&main_interface)) {
+    //
+    // }
+
+    if let Some(interface) = main_interface
+        && let Some(data) = networks.get(&interface)
+    {
+        return NetworkInfo {
+            interface_name: interface,
+            total_rx_bytes: data.total_received(),
+            total_tx_bytes: data.total_transmitted(),
+            total_rx_packets: data.total_packets_received(),
+            total_tx_packets: data.total_packets_transmitted(),
+            total_rx_errors: data.total_errors_on_received(),
+            total_tx_errors: data.total_errors_on_transmitted(),
+        };
     }
 
     NetworkInfo {
