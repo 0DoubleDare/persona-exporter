@@ -1,5 +1,3 @@
-// use paas_core::structures::server_metrics::ServerMetrics;
-// use persona_exporter::AgentConfigFile;
 use persona_exporter::configs::AgentConfigFile;
 use persona_exporter::metrics::*;
 use persona_exporter_types::ServerMetrics;

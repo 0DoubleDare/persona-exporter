@@ -2,7 +2,6 @@
 # Интервал отправки метрик в секундах. Чем меньше - тем больше нагрузка на систему
 send_metrics_interval = 5
 debug_mode = false
-
 #failure_trigger = false
 
 #max_secs_to_disconnect = 500
