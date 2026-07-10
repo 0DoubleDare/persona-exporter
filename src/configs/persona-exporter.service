@@ -3,8 +3,9 @@ Description=Systemd service for persona-exporter util
 After=network.target
 
 [Service]
-User=nobody
-Group=nogroup
+User=persona-exp
+Group=persona-exp
+ConfigurationDirectory=persona-exporter
 ExecStart=/usr/bin/persona-exporter
 Restart=always
 RestartSec=5s

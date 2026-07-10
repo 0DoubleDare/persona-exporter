@@ -15,19 +15,18 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(if debug_mode { "debug" } else { "info" })
         .init();
-    println!("Open app");
-    let config = loop {
-        match AgentConfigFile::new() {
-            Ok(value) => {
-                tracing::info!("Config file parsed successfully");
-                break value;
-            }
-            Err(err) => {
-                tracing::error!("Failed to parse configs file: {}", err);
-                tracing::warn!("Wait 10sec to reload...");
-                sleep(Duration::from_secs(10)).await;
-            }
-        };
+    let config: AgentConfigFile = match AgentConfigFile::new() {
+        Ok(value) => {
+            tracing::info!("Config file parsed successfully");
+            value
+        }
+        Err(err) => {
+            tracing::error!("Failed to parse config file: {}", err);
+            tracing::warn!("Use default config");
+            AgentConfigFile::default()
+            // tracing::warn!("Wait 10sec to reload...");
+            // sleep(Duration::from_secs(10)).await;
+        }
     };
 
     tracing::info!("Exporter initialized");
