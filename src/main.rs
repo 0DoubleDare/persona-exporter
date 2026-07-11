@@ -24,8 +24,6 @@ async fn main() {
             tracing::error!("Failed to parse config file: {}", err);
             tracing::warn!("Use default config");
             AgentConfigFile::default()
-            // tracing::warn!("Wait 10sec to reload...");
-            // sleep(Duration::from_secs(10)).await;
         }
     };
 

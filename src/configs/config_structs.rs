@@ -70,37 +70,9 @@ pub struct ServerSection {
 
 impl AgentConfigFile {
     pub fn new() -> Result<Self, ConfigError> {
-        // const DEFAULT_CONFIG_CONTENT: &str = include_str!("config.example.toml");
-
         let config_path = env::var("PERSONA_EXPORTER_CONFIG_PATH")
             .map(PathBuf::from)
             .unwrap_or_else(|_| PathBuf::from("/etc/persona-exporter/config.toml"));
-
-        // match fs::metadata(&config_path) {
-        //     Ok(metadata) => {
-        //         tracing::info!("{:#?}", metadata);
-        //         if metadata.len() <= 0 {
-        //             fs::write(&config_path, DEFAULT_CONFIG_CONTENT)
-        //                 .map_err(|e| {
-        //                     ConfigError::Message(format!(
-        //                         "Failed to write data in empty config file: {}",
-        //                         e
-        //                     ))
-        //                 })
-        //                 .err();
-        //         }
-        //     }
-        //     Err(e) => {
-        //         tracing::info!("Persona-exporter config error: {}", e);
-        //     }
-        // };
-        // if !config_path.exists() {
-        //     std::fs::write(&config_path, DEFAULT_CONFIG_CONTENT).map_err(|e| {
-        //         ConfigError::Message(format!(
-        //             "Failed to populate the configuration with default data: {e}"
-        //         ))
-        //     })?;
-        // }
 
         let s = Config::builder()
             .add_source(File::from(config_path).required(true))
