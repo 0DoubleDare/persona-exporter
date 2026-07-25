@@ -4,8 +4,8 @@ use persona_exporter_types::ServerMetrics;
 use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
-use tracing::{error, info, warn};
 use tokio::time::sleep;
+use tracing::{error, info, warn};
 
 pub async fn collect_metrics_for_os() {
     let debug_mode: bool = env::var("DEBUG_MODE")

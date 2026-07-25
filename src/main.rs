@@ -1,10 +1,9 @@
 use persona_exporter::machines::*;
 #[cfg_attr(target_os = "none", no_std)]
 #[cfg_attr(target_os = "none", no_main)]
-
 #[cfg(target_os = "none")]
 #[embassy_executor::main]
-async fn main(spawner: embassy_executor::Spawner,) {
+async fn main(spawner: embassy_executor::Spawner) {
     microcontroller::collect_metrics::collect_metrics_for_microcontroller();
 }
 
@@ -125,4 +124,3 @@ async fn main() {
     //     sleep(Duration::from_secs(await_sec)).await;
     // }
 }
-
