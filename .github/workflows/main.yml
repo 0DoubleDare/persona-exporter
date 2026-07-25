@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
 
+      - uses: swatinem/rust-cache@v2
+
       - name: Test fmt
         run: |
           cargo fmt --all -- --check
@@ -50,10 +52,17 @@ jobs:
             target: x86_64-pc-windows-msvc
             artifact_name: persona-exporter.exe
             asset_name: persona-exporter-windows.zip
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_name: persona-exporter-debian
+            asset_name: debian-package
     steps:
       - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
         with:
           target: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
 
       - name: Build project
         run: cargo build --release --target ${{ matrix.target }}
@@ -76,11 +85,19 @@ jobs:
         run: |
           Compress-Archive -Path "target\${{ matrix.target }}\release\${{ matrix.artifact_name }}" -DestinationPath "${{ github.workspace }}\${{ matrix.asset_name }}"
 
+      - name: Install cargo-deb
+        if: matrix.os == 'debian-package'
+        uses: taiki-e/install-action@cargo-deb
+
+      - name: Create Debian package
+        if: matrix.os == 'debian-package'
+        run: cargo-deb --target ${{ matrix.target }}
+
       - name: Upload temporary artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset_name }}
-          path: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name == 'debian-package' && 'target/debian/*.deb' || matrix.asset_name }}
           retention-days: 1
 
   release:
@@ -98,7 +115,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: persona-exporter-*
+          pattern: persona-exporter*
           merge-multiple: true
 
       - name: Get version from Cargo.toml

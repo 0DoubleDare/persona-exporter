@@ -13,6 +13,7 @@ Can be stored in an environment variable:
 export PERSONA_AGENT__SERVER__SERVER_KEY="your_server_key"
 '''
 server_key = "your_generated_token"
+without_server_key = false
 # Куда будут отправляться данные (API сервер или напрямую в дешборд)
 url = '''
 target URL to which metrics will be sent.

@@ -66,6 +66,8 @@ pub struct AgentSection {
 pub struct ServerSection {
     pub server_url: String,
     pub server_key: String,
+    #[serde(default = "default_enabled")]
+    pub enable_server_key: bool,
 }
 
 impl AgentConfigFile {
@@ -96,6 +98,7 @@ impl Default for AgentConfigFile {
             server: ServerSection {
                 server_url: "put-your-target-url".to_string(),
                 server_key: "put-your-token".to_string(),
+                enable_server_key: true,
             },
             metrics: MetricsConfig {
                 cpu: CpuConfig { enabled: true },
