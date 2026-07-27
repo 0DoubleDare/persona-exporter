@@ -22,51 +22,42 @@ pub struct MetricsConfig {
 
 #[derive(Deserialize, Debug, Default)]
 pub struct MemoryConfig {
-    #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct ComponentsConfig {
-    #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
 #[derive(Deserialize, Debug, Default)]
 pub struct CpuConfig {
-    #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct DisksConfig {
-    #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct NetworkConfig {
-    #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct SystemConfig {
-    #[serde(default = "default_enabled")]
     pub enabled: bool,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct AgentSection {
     pub send_metrics_interval: u64,
-    #[serde(default)]
-    pub debug_mode: bool,
 }
 
 #[derive(Deserialize, Debug, Default)]
 pub struct ServerSection {
     pub server_url: String,
     pub server_key: String,
-    #[serde(default = "default_enabled")]
     pub enable_server_key: bool,
 }
 
@@ -84,19 +75,14 @@ impl AgentConfigFile {
         s.try_deserialize()
     }
 }
-fn default_enabled() -> bool {
-    true
-}
-
 impl Default for AgentConfigFile {
     fn default() -> Self {
         AgentConfigFile {
             agent: AgentSection {
                 send_metrics_interval: 5,
-                debug_mode: false,
             },
             server: ServerSection {
-                server_url: "put-your-target-url".to_string(),
+                server_url: "https://example.com".to_string(),
                 server_key: "put-your-token".to_string(),
                 enable_server_key: true,
             },

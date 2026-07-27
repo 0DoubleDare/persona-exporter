@@ -5,10 +5,10 @@ use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
 use tokio::time::sleep;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 pub async fn collect_metrics_for_os() {
-    let debug_mode: bool = env::var("DEBUG_MODE")
+    let debug_mode: bool = env::var("DEBUG")
         .unwrap_or_else(|_| "false".to_string())
         .parse()
         .unwrap_or(false);
@@ -113,7 +113,27 @@ pub async fn collect_metrics_for_os() {
         info!("Sending data to a specified URL");
         match response {
             Ok(response) => {
-                info!("Response from the server: {}", response.status())
+                let response_status = response.status();
+                let status_code_type = response_status.as_u16() / 100;
+                match status_code_type {
+                    4 => {
+                        error!("What is wrong on the client side: {}", response_status);
+                    }
+                    5 => {
+                        error!("What is wrong on the server side: {}", response_status);
+                    }
+                    _ => {
+                        info!("Positive server response: {}", response_status);
+                    }
+                }
+                debug!("{:#?}", response);
+                debug!(
+                    "{}",
+                    response
+                        .text()
+                        .await
+                        .unwrap_or_else(|_| "Body JSON is empty".to_string())
+                )
             }
             Err(err) => {
                 error!("Send error: {}", err)
