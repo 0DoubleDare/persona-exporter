@@ -1,12 +1,12 @@
 use crate::configs::{AgentConfigFile, DataType, HeaderConfig};
 use crate::metrics::*;
 use influxdb_line_protocol::{LineProtocolBuilder, builder::AfterField};
-use persona_exporter_types::default::ServerMetrics;
+use persona_exporter_types::metrics::ServerMetrics;
 use reqwest::RequestBuilder;
 use reqwest::header::{HeaderName, HeaderValue};
 use std::env;
 use std::time::{Duration, SystemTime};
-use sysinfo::{Components, Disks, Networks};
+use sysinfo::{Components, Disks, Networks, System};
 use tokio::time::sleep;
 use tracing::{debug, error, info};
 
@@ -29,7 +29,7 @@ pub async fn collect_metrics_for_os() {
             panic!(
                 r#"
                 Something went wrong while loading the configuration.
-                Your environment variables and configuration file are invalid.
+                Your environment variables or configuration file is invalid.
                 Error: {err}
                 "#
             );
@@ -37,26 +37,32 @@ pub async fn collect_metrics_for_os() {
     };
 
     info!("Exporter initialized");
-    let auth_token = config.server.bearer_token;
+    let auth_token = &config.server.bearer_token;
+    // let general_retries_connection = config.server.retries_connection;
+    // let general_metrics_interval = config.agent.send_metrics_interval;
+
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(10))
         .build()
         .unwrap();
-    let mut sys =
-        (config.metrics.cpu.enabled || config.metrics.memory.enabled).then(sysinfo::System::new);
+    let mut sys = (config.metrics.cpu.settings.enabled || config.metrics.memory.settings.enabled)
+        .then(sysinfo::System::new);
     let mut disks = config
         .metrics
         .disks
+        .settings
         .enabled
         .then(Disks::new_with_refreshed_list);
     let mut networks = config
         .metrics
         .network
+        .settings
         .enabled
         .then(Networks::new_with_refreshed_list);
     let mut components = config
         .metrics
         .components
+        .settings
         .enabled
         .then(Components::new_with_refreshed_list);
 
@@ -66,18 +72,31 @@ pub async fn collect_metrics_for_os() {
     loop {
         info!("Collect metrics...");
 
-        let (mem_info, cpu_info) = if let Some(ref mut s) = sys {
+        let (mem_info, cpu_info, sys_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
                 config
                     .metrics
                     .memory
+                    .settings
                     .enabled
                     .then(|| collect_memory_metrics(s)),
-                config.metrics.cpu.enabled.then(|| collect_cpus_metrics(s)),
+                config
+                    .metrics
+                    .cpu
+                    .settings
+                    .enabled
+                    .then(|| collect_cpus_metrics(s)),
+                config.metrics.cpu.settings.enabled.then(|| {
+                    collect_system_metrics(
+                        s,
+                        &config.metrics.processes.order_by,
+                        config.metrics.processes.process_limit,
+                    )
+                }),
             )
         } else {
-            (None, None)
+            (None, None, None)
         };
 
         let disk_info = disks.as_mut().map(|d| {
@@ -93,7 +112,6 @@ pub async fn collect_metrics_for_os() {
             c.refresh(false);
             collect_components_metrics(c)
         });
-        let sys_info = config.metrics.system.enabled.then(collect_system_metrics);
 
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -165,10 +183,10 @@ pub async fn collect_metrics_for_os() {
                 network: network_info,
                 cpu: cpu_info,
                 components: components_info,
-                load_average: None,
                 time: time as u64,
             };
 
+            info!("Config: {:#?}", config);
             info!("Machine metrics: {:#?}", machine_metrics);
 
             let response_builder = client

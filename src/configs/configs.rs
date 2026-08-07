@@ -18,24 +18,35 @@ pub struct MetricsConfig {
     pub system: SystemConfig,
     pub components: ComponentsConfig,
     pub memory: MemoryConfig,
+    pub processes: ProcessesConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
+pub struct ProcessesConfig {
+    pub settings: CommonMetricSetting,
+    pub process_limit: usize,
+    pub order_by: ProcessOrderBy,
+}
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct MemoryConfig {
+    #[serde(flatten)]
     pub settings: CommonMetricSetting,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ComponentsConfig {
+    #[serde(flatten)]
     pub settings: CommonMetricSetting,
 }
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CpuConfig {
+    #[serde(flatten)]
     pub settings: CommonMetricSetting,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct DisksConfig {
+    #[serde(flatten)]
     pub settings: CommonMetricSetting,
     pub ignore_fs_types: Vec<String>,
     pub ignore_mount_points: Vec<String>,
@@ -43,6 +54,7 @@ pub struct DisksConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct NetworkConfig {
+    #[serde(flatten)]
     pub settings: CommonMetricSetting,
     pub list_type: ListType,
     pub interfaces: Vec<String>,
@@ -50,6 +62,7 @@ pub struct NetworkConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct SystemConfig {
+    #[serde(flatten)]
     pub settings: CommonMetricSetting,
     pub collect_processes: bool,
     pub process_limit: u32,
@@ -66,7 +79,7 @@ pub struct AgentSection {
 pub struct ServerSection {
     pub url: String,
     pub bearer_token: String,
-    pub enable_server_key: bool,
+    pub retries_connection: Option<u32>,
     pub additional_get_params: Vec<ParamField>,
     pub additional_headers: Vec<HeaderConfig>,
 }
@@ -83,11 +96,13 @@ pub struct ParamField {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CommonMetricSetting {
     pub enabled: bool,
-    pub override_interval: u32,
+    pub override_interval: Option<u32>,
+    pub override_retries_connection: Option<u32>,
 }
+
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum SendModel {
@@ -110,6 +125,17 @@ pub enum ListType {
     WhiteList,
     #[default]
     IgnoreList,
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessOrderBy {
+    #[default]
+    CpuUsage,
+    Memory,
+    VirtualMemory,
+    RunTime,
+    StartTime,
 }
 
 impl AgentConfigFile {
@@ -138,30 +164,51 @@ impl Default for AgentConfigFile {
             server: ServerSection {
                 url: "https://example.com".to_string(),
                 bearer_token: "".to_string(),
-                enable_server_key: true,
+                retries_connection: None,
                 additional_get_params: Vec::new(),
                 additional_headers: Vec::new(),
             },
             metrics: MetricsConfig {
-                cpu: CpuConfig { enabled: true },
+                processes: ProcessesConfig {
+                    settings: CommonMetricSetting::default(),
+                    process_limit: 5,
+                    order_by: ProcessOrderBy::default(),
+                },
+                cpu: CpuConfig {
+                    settings: CommonMetricSetting::default(),
+                },
                 disks: DisksConfig {
-                    enabled: true,
+                    settings: CommonMetricSetting::default(),
                     ignore_fs_types: vec![String::from("tmpfs")],
                     ignore_mount_points: vec![String::from("/mnt/backup_test")],
                 },
                 network: NetworkConfig {
-                    enabled: true,
+                    settings: CommonMetricSetting::default(),
                     list_type: ListType::default(),
                     interfaces: vec![String::from("lo"), String::from("docker0")],
                 },
                 system: SystemConfig {
-                    enabled: true,
+                    settings: CommonMetricSetting::default(),
                     collect_processes: true,
                     process_limit: 5,
                 },
-                components: ComponentsConfig { enabled: true },
-                memory: MemoryConfig { enabled: true },
+                components: ComponentsConfig {
+                    settings: CommonMetricSetting::default(),
+                },
+                memory: MemoryConfig {
+                    settings: CommonMetricSetting::default(),
+                },
             },
+        }
+    }
+}
+
+impl Default for CommonMetricSetting {
+    fn default() -> Self {
+        CommonMetricSetting {
+            enabled: true,
+            override_interval: None,
+            override_retries_connection: None,
         }
     }
 }

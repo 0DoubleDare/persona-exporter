@@ -1,9 +1,12 @@
-use persona_exporter_types::default::*;
+use crate::configs::{AgentConfigFile, ProcessOrderBy};
+use persona_exporter_types::metrics::additional_structs::DiskUsage;
+use persona_exporter_types::metrics::*;
 use persona_exporter_types::*;
+use std::fs::write;
 use std::path::Path;
-use sysinfo::{Components, Disks, Networks, System};
+use sysinfo::{Components, Disks, Networks, Pid, Process, System, get_current_pid};
 
-pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
+pub fn collect_cpus_metrics(sys: &System) -> CpuInfo {
     let physical_core_count = System::physical_core_count();
 
     CpuInfo {
@@ -13,7 +16,7 @@ pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
     }
 }
 
-pub fn collect_memory_metrics(sys: &mut System) -> MemoryInfo {
+pub fn collect_memory_metrics(sys: &System) -> MemoryInfo {
     let total_memory = sys.total_memory();
     let used_memory = sys.used_memory();
     let free_memory = sys.free_memory();
@@ -21,13 +24,6 @@ pub fn collect_memory_metrics(sys: &mut System) -> MemoryInfo {
     let used_swap = sys.used_swap();
     let free_swap = sys.free_swap();
     let available_memory = sys.available_memory();
-
-    let load_avg = System::load_average();
-    let load_avg = LoadAverage {
-        one: load_avg.one as f32,
-        five: load_avg.five as f32,
-        fifteen: load_avg.fifteen as f32,
-    };
 
     MemoryInfo {
         total_memory,
@@ -113,7 +109,42 @@ pub fn collect_components_metrics(components: &mut Components) -> ComponentsInfo
     }
 }
 
-pub fn collect_system_metrics() -> SystemInfo {
+pub fn collect_system_metrics(
+    sys: &mut System,
+    sort_by: &ProcessOrderBy,
+    process_limit: usize,
+) -> SystemInfo {
+    let load_avg = System::load_average();
+    let load_avg = LoadAverage::from(load_avg);
+
+    let self_pid = get_current_pid();
+    let self_process: Option<ProcessInfo> = self_pid
+        .ok()
+        .and_then(|pid| sys.process(pid))
+        .map(Into::into);
+    let mut processes: Vec<ProcessInfo> = sys
+        .processes()
+        .into_iter()
+        .map(|x| ProcessInfo::from(x.1))
+        .collect();
+    let sort_by = match sort_by {
+        ProcessOrderBy::CpuUsage => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.cpu_usage.total_cmp(&a.cpu_usage)
+        }
+        ProcessOrderBy::Memory => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.memory_usage.cmp(&a.memory_usage)
+        }
+        ProcessOrderBy::VirtualMemory => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.virtual_memory.cmp(&a.virtual_memory)
+        }
+        ProcessOrderBy::RunTime => |a: &ProcessInfo, b: &ProcessInfo| b.run_time.cmp(&a.run_time),
+        ProcessOrderBy::StartTime => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
+        }
+    };
+    processes.sort_unstable_by(sort_by);
+    processes.truncate(process_limit);
+
     SystemInfo {
         name: System::name().unwrap_or(String::from("unknown")),
         kernel_long_version: System::kernel_long_version(),
@@ -125,5 +156,10 @@ pub fn collect_system_metrics() -> SystemInfo {
         uptime: System::uptime(),
         os_version: System::os_version().unwrap_or(String::from("unknown")),
         host_name: System::host_name().unwrap_or(String::from("unknown")),
+        load_average: load_avg,
+        processes: ProcessesInfo {
+            exporter_metrics: self_process,
+            processes: processes,
+        },
     }
 }
