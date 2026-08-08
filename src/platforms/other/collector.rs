@@ -1,14 +1,15 @@
-use crate::configs::{AgentConfigFile, DataType, HeaderConfig};
+use crate::config::{AgentConfigFile, DataType};
 use crate::metrics::*;
-use influxdb_line_protocol::{LineProtocolBuilder, builder::AfterField};
+use crate::platforms::other::methods::{
+    ToLineProtocolArgument, build_request_body, collect_metrics_as_line_protocol, send_request,
+};
 use persona_exporter_types::metrics::ServerMetrics;
-use reqwest::RequestBuilder;
-use reqwest::header::{HeaderName, HeaderValue};
+use reqwest::Client;
 use std::env;
 use std::time::{Duration, SystemTime};
-use sysinfo::{Components, Disks, Networks, System};
+use sysinfo::{Components, Disks, Networks};
 use tokio::time::sleep;
-use tracing::{debug, error, info};
+use tracing::info;
 
 pub async fn collect_metrics_for_os() {
     let debug_mode: bool = env::var("DEBUG")
@@ -19,7 +20,6 @@ pub async fn collect_metrics_for_os() {
     tracing_subscriber::fmt()
         .with_env_filter(if debug_mode { "debug" } else { "info" })
         .init();
-
     let config: AgentConfigFile = match AgentConfigFile::new() {
         Ok(value) => {
             info!("Config file parsed successfully");
@@ -37,14 +37,15 @@ pub async fn collect_metrics_for_os() {
     };
 
     info!("Exporter initialized");
-    let auth_token = &config.server.bearer_token;
-    // let general_retries_connection = config.server.retries_connection;
-    // let general_metrics_interval = config.agent.send_metrics_interval;
+    let additional_headers = &config.server.additional_headers;
+    let get_params = &config.server.additional_get_params;
+    let target_url = &config.server.url;
 
-    let client = reqwest::Client::builder()
+    let client = Client::builder()
         .timeout(Duration::from_secs(10))
         .build()
         .unwrap();
+
     let mut sys = (config.metrics.cpu.settings.enabled || config.metrics.memory.settings.enabled)
         .then(sysinfo::System::new);
     let mut disks = config
@@ -71,7 +72,6 @@ pub async fn collect_metrics_for_os() {
 
     loop {
         info!("Collect metrics...");
-
         let (mem_info, cpu_info, sys_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
@@ -90,7 +90,7 @@ pub async fn collect_metrics_for_os() {
                 config.metrics.cpu.settings.enabled.then(|| {
                     collect_system_metrics(
                         s,
-                        &config.metrics.processes.order_by,
+                        &config.metrics.processes.sort_by,
                         config.metrics.processes.process_limit,
                     )
                 }),
@@ -120,61 +120,27 @@ pub async fn collect_metrics_for_os() {
 
         if config.agent.data_type == DataType::LineProtocol {
             let time = time as i64;
-            let line_sys = LineProtocolBuilder::from(sys_info.unwrap_or_default())
-                .timestamp(time)
-                .close_line()
-                .build();
-            let line_mem = LineProtocolBuilder::from(mem_info.unwrap_or_default())
-                .timestamp(time)
-                .close_line()
-                .build();
-            let line_disk = LineProtocolBuilder::from(disk_info.unwrap_or_default())
-                .timestamp(time)
-                .close_line()
-                .build();
-            let line_network = LineProtocolBuilder::from(network_info.unwrap_or_default())
-                .timestamp(time)
-                .close_line()
-                .build();
-            let line_cpu = LineProtocolBuilder::from(cpu_info.unwrap_or_default())
-                .timestamp(time)
-                .close_line()
-                .build();
-
-            let mut line_components: Vec<u8> = vec![];
-
-            for line in components_info.unwrap_or_default().components {
-                let mut l = LineProtocolBuilder::from(line)
-                    .timestamp(time)
-                    .close_line()
-                    .build();
-                line_components.append(&mut l);
-            }
-
-            let total_line = vec![
-                line_sys.as_slice(),
-                line_mem.as_slice(),
-                line_disk.as_slice(),
-                line_network.as_slice(),
-                line_cpu.as_slice(),
-                line_components.as_slice(),
-            ]
-            .concat();
-            info!("Sending data to a specified URL: {:?}", total_line);
-
-            let mut response_builder = client
-                .post(&config.server.url)
-                .header("Authorization", "Token d2Iv9eGcgUhljFmRl7zk_3ryWNGD5VclKkXIY9UYcXbfUW98BdWsOQENN9sFxDN6zYEDQ9WKPrQa4Uhetdr5Nw==")
-                .header("Content-Type", "text/plain; charset=utf-8")
-                .bearer_auth(&auth_token)
-                .body(total_line);
-
-            response_builder = insert_headers_to_request_builder(
-                response_builder,
-                config.server.additional_headers.clone(),
+            let sys = sys_info.unwrap_or_default();
+            let argument = ToLineProtocolArgument {
+                time,
+                system: &sys,
+                memory: &mem_info.unwrap_or_default(),
+                disk: &disk_info.unwrap_or_default(),
+                network: &network_info.unwrap_or_default(),
+                cpu: &cpu_info.unwrap_or_default(),
+                components: &components_info.unwrap_or_default(),
+                processes_info: &sys.processes,
+            };
+            let total_line = collect_metrics_as_line_protocol(argument);
+            info!(
+                "Sending data to a specified URL: {:#?}",
+                String::from_utf8(total_line.to_vec())
             );
 
-            send(response_builder).await;
+            let request = build_request_body(&client, target_url, get_params, additional_headers)
+                .body(total_line);
+
+            send_request(request).await;
         } else {
             let machine_metrics = ServerMetrics {
                 system: sys_info,
@@ -186,63 +152,17 @@ pub async fn collect_metrics_for_os() {
                 time: time as u64,
             };
 
-            info!("Config: {:#?}", config);
+            // info!("Config: {:#?}", &config);
             info!("Machine metrics: {:#?}", machine_metrics);
 
-            let response_builder = client
-                .post(&config.server.url)
-                .header("Authorization", "Token")
-                .bearer_auth(&auth_token)
+            let request = build_request_body(&client, target_url, get_params, additional_headers)
                 .json(&machine_metrics);
-            info!("Sending data to a specified URL");
+            info!("Sending data to a specified URL: {:?}", request);
 
-            send(response_builder).await;
+            send_request(request).await;
         }
 
         info!("Next metrics before {} seconds", await_sec);
         sleep(Duration::from_secs(await_sec)).await;
     }
-}
-
-pub async fn send(request: RequestBuilder) {
-    let response = request.send().await;
-
-    match response {
-        Ok(response) => {
-            let response_status = response.status();
-            let status_code_type = response_status.as_u16() / 100;
-            match status_code_type {
-                4 => {
-                    error!("What is wrong on the client side: {}", response_status);
-                }
-                5 => {
-                    error!("What is wrong on the server side: {}", response_status);
-                }
-                _ => {
-                    info!("Positive server response: {}", response_status);
-                }
-            }
-            debug!("{:#?}", response);
-            debug!(
-                "{}",
-                response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Body JSON is empty".to_string())
-            )
-        }
-        Err(err) => {
-            error!("Send error: {}", err)
-        }
-    }
-}
-
-pub fn insert_headers_to_request_builder(
-    mut request: RequestBuilder,
-    headers: Vec<HeaderConfig>,
-) -> RequestBuilder {
-    for header in headers {
-        request = request.header(header.header, header.value);
-    }
-    request
 }

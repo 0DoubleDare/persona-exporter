@@ -18,11 +18,13 @@ persona-exporter-types = { features = ["full"], path = "../persona-exporter-type
 influxdb-line-protocol = "2.0.0"
 sysinfo = { version = "0.39.3", features = ["system"] }
 tokio = { version = "1.52.2", features = ["full"] }
-reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["json", "rustls", "query"] }
 
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 config = "0.15.24"
+config-shellexpand = "0.2.0"
+dirs = "6.0.0"
 
 # Common crates (for PC & nostd)
 [dependencies]
@@ -39,7 +41,7 @@ panic = "abort"
 [package.metadata.deb]
 maintainer = "Lider Nikita <lidernikita661@gmail.com>"
 copyright = "2026 Lider Nikita <lidernikita661@gmail.com>"
-systemd-units = { enable = true, unit-scripts = "src/configs/", unit-name = "persona-exporter", restart-after-upgrade = true }
+systemd-units = { enable = true, unit-scripts = "src/configs/", unit-name = "persona-exp", restart-after-upgrade = true }
 extended-description = """\
 Lightweight system metrics exporter for Prometheus\
 A lightweight exporter written in Rust that monitors core system\

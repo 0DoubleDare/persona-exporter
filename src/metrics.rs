@@ -1,10 +1,7 @@
-use crate::configs::{AgentConfigFile, ProcessOrderBy};
-use persona_exporter_types::metrics::additional_structs::DiskUsage;
+use crate::config::ProcessSortBy;
 use persona_exporter_types::metrics::*;
-use persona_exporter_types::*;
-use std::fs::write;
 use std::path::Path;
-use sysinfo::{Components, Disks, Networks, Pid, Process, System, get_current_pid};
+use sysinfo::{Components, Disks, Networks, System, get_current_pid};
 
 pub fn collect_cpus_metrics(sys: &System) -> CpuInfo {
     let physical_core_count = System::physical_core_count();
@@ -111,7 +108,7 @@ pub fn collect_components_metrics(components: &mut Components) -> ComponentsInfo
 
 pub fn collect_system_metrics(
     sys: &mut System,
-    sort_by: &ProcessOrderBy,
+    sort_by: &ProcessSortBy,
     process_limit: usize,
 ) -> SystemInfo {
     let load_avg = System::load_average();
@@ -124,21 +121,21 @@ pub fn collect_system_metrics(
         .map(Into::into);
     let mut processes: Vec<ProcessInfo> = sys
         .processes()
-        .into_iter()
+        .iter()
         .map(|x| ProcessInfo::from(x.1))
         .collect();
     let sort_by = match sort_by {
-        ProcessOrderBy::CpuUsage => {
+        ProcessSortBy::CpuUsage => {
             |a: &ProcessInfo, b: &ProcessInfo| b.cpu_usage.total_cmp(&a.cpu_usage)
         }
-        ProcessOrderBy::Memory => {
+        ProcessSortBy::Memory => {
             |a: &ProcessInfo, b: &ProcessInfo| b.memory_usage.cmp(&a.memory_usage)
         }
-        ProcessOrderBy::VirtualMemory => {
+        ProcessSortBy::VirtualMemory => {
             |a: &ProcessInfo, b: &ProcessInfo| b.virtual_memory.cmp(&a.virtual_memory)
         }
-        ProcessOrderBy::RunTime => |a: &ProcessInfo, b: &ProcessInfo| b.run_time.cmp(&a.run_time),
-        ProcessOrderBy::StartTime => {
+        ProcessSortBy::RunTime => |a: &ProcessInfo, b: &ProcessInfo| b.run_time.cmp(&a.run_time),
+        ProcessSortBy::StartTime => {
             |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
         }
     };
@@ -159,7 +156,7 @@ pub fn collect_system_metrics(
         load_average: load_avg,
         processes: ProcessesInfo {
             exporter_metrics: self_process,
-            processes: processes,
+            processes,
         },
     }
 }
