@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::*;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentConfigFile {
@@ -16,15 +15,21 @@ pub struct MetricsConfig {
     pub system: SystemConfig,
     pub components: ComponentsConfig,
     pub memory: MemoryConfig,
-    pub processes: ProcessesConfig,
+    pub processes: ProcessListConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct ProcessesConfig {
+pub struct ProcessListConfig {
     pub settings: CommonMetricSetting,
     pub process_limit: usize,
     pub sort_by: ProcessSortBy,
+    // pub sort_by: [Option<ProcessListSortConfig>; 5],
 }
+// #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+// pub struct ProcessListSortConfig {
+//     pub sort_by: ProcessSortBy,
+//     pub override_process_limit: Option<usize>,
+// }
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct MemoryConfig {
     #[serde(flatten)]

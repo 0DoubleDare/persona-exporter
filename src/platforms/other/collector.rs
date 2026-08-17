@@ -22,7 +22,7 @@ pub async fn collect_metrics_for_os() {
         .init();
     let config: AgentConfigFile = match AgentConfigFile::new() {
         Ok(value) => {
-            info!("Config file parsed successfully");
+            info!("Config file parsed successfully",);
             value
         }
         Err(err) => {
@@ -152,7 +152,7 @@ pub async fn collect_metrics_for_os() {
                 time: time as u64,
             };
 
-            // info!("Config: {:#?}", &config);
+            info!("Config: {:#?}", &config);
             info!("Machine metrics: {:#?}", machine_metrics);
 
             let request = build_request_body(&client, target_url, get_params, additional_headers)

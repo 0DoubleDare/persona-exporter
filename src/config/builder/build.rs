@@ -45,7 +45,7 @@ impl Default for AgentConfigFile {
                 additional_headers: Vec::new(),
             },
             metrics: MetricsConfig {
-                processes: ProcessesConfig {
+                processes: ProcessListConfig {
                     settings: CommonMetricSetting::default(),
                     process_limit: 5,
                     sort_by: ProcessSortBy::default(),
