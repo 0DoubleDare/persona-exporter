@@ -1,0 +1,22 @@
+name: Checkout And Install Rust
+description: Checkout, install and cashing rust
+
+inputs:
+  target:
+    required: false
+    default: ''
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        target: ${{ inputs.target }}
+
+    - name: Rust cache
+      uses: Swatinem/rust-cache@v2

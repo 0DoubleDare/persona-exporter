@@ -1,8 +1,9 @@
-use persona_exporter_types::*;
+use crate::config::ProcessSortBy;
+use persona_exporter_types::metrics::*;
 use std::path::Path;
-use sysinfo::{Components, Disks, Networks, System};
+use sysinfo::{Components, Disks, Networks, System, get_current_pid};
 
-pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
+pub fn collect_cpus_metrics(sys: &System) -> CpuInfo {
     let physical_core_count = System::physical_core_count();
 
     CpuInfo {
@@ -12,7 +13,7 @@ pub fn collect_cpus_metrics(sys: &mut System) -> CpuInfo {
     }
 }
 
-pub fn collect_memory_metrics(sys: &mut System) -> MemoryInfo {
+pub fn collect_memory_metrics(sys: &System) -> MemoryInfo {
     let total_memory = sys.total_memory();
     let used_memory = sys.used_memory();
     let free_memory = sys.free_memory();
@@ -20,13 +21,6 @@ pub fn collect_memory_metrics(sys: &mut System) -> MemoryInfo {
     let used_swap = sys.used_swap();
     let free_swap = sys.free_swap();
     let available_memory = sys.available_memory();
-
-    let load_avg = System::load_average();
-    let load_avg = LoadAverage {
-        one: load_avg.one as f32,
-        five: load_avg.five as f32,
-        fifteen: load_avg.fifteen as f32,
-    };
 
     MemoryInfo {
         total_memory,
@@ -36,7 +30,6 @@ pub fn collect_memory_metrics(sys: &mut System) -> MemoryInfo {
         used_swap,
         free_swap,
         available_memory,
-        load_avg,
     }
 }
 
@@ -74,19 +67,18 @@ pub fn collect_network_metrics(networks: &mut Networks) -> NetworkInfo {
         .max_by_key(|(_, data)| data.total_received() + data.total_transmitted())
         .map(|(name, _)| name.clone());
 
-    if let Some(interface) = main_interface {
-        if let Some(data) = networks.get(&interface) {
-            // println!("{}", data.)
-            return NetworkInfo {
-                interface_name: interface,
-                total_rx_bytes: data.total_received(),
-                total_tx_bytes: data.total_transmitted(),
-                total_rx_packets: data.total_packets_received(),
-                total_tx_packets: data.total_packets_transmitted(),
-                total_rx_errors: data.total_errors_on_received(),
-                total_tx_errors: data.total_errors_on_transmitted(),
-            };
-        }
+    if let Some(interface) = main_interface
+        && let Some(data) = networks.get(&interface)
+    {
+        return NetworkInfo {
+            interface_name: interface,
+            total_rx_bytes: data.total_received(),
+            total_tx_bytes: data.total_transmitted(),
+            total_rx_packets: data.total_packets_received(),
+            total_tx_packets: data.total_packets_transmitted(),
+            total_rx_errors: data.total_errors_on_received(),
+            total_tx_errors: data.total_errors_on_transmitted(),
+        };
     }
 
     NetworkInfo {
@@ -115,6 +107,9 @@ pub fn collect_components_metrics(components: &mut Components) -> ComponentsInfo
 }
 
 pub fn collect_system_metrics() -> SystemInfo {
+    let load_avg = System::load_average();
+    let load_avg = LoadAverage::from(load_avg);
+
     SystemInfo {
         name: System::name().unwrap_or(String::from("unknown")),
         kernel_long_version: System::kernel_long_version(),
@@ -126,5 +121,46 @@ pub fn collect_system_metrics() -> SystemInfo {
         uptime: System::uptime(),
         os_version: System::os_version().unwrap_or(String::from("unknown")),
         host_name: System::host_name().unwrap_or(String::from("unknown")),
+        load_average: load_avg,
+    }
+}
+
+pub fn collect_process_list_info(
+    sys: &System,
+    sort_by: &ProcessSortBy,
+    process_limit: usize,
+) -> ProcessListInfo {
+    let self_pid = get_current_pid();
+    let self_process_metrics: Option<ProcessInfo> = self_pid
+        .ok()
+        .and_then(|pid| sys.process(pid))
+        .map(Into::into);
+
+    let mut process_list: Vec<ProcessInfo> = sys
+        .processes()
+        .iter()
+        .map(|process| ProcessInfo::from(process.1))
+        .collect();
+
+    let sort_by = match sort_by {
+        ProcessSortBy::Memory => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.memory_usage.cmp(&a.memory_usage)
+        }
+        ProcessSortBy::VirtualMemory => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.virtual_memory.cmp(&a.virtual_memory)
+        }
+        ProcessSortBy::RunTime => |a: &ProcessInfo, b: &ProcessInfo| b.run_time.cmp(&a.run_time),
+        ProcessSortBy::StartTime => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
+        }
+        // default also contain ProcessSortBy::CpuUsage
+        _ => |a: &ProcessInfo, b: &ProcessInfo| b.cpu_usage.total_cmp(&a.cpu_usage),
+    };
+    process_list.sort_unstable_by(sort_by);
+    process_list.truncate(process_limit);
+
+    ProcessListInfo {
+        exporter_metrics: self_process_metrics,
+        process_list,
     }
 }
