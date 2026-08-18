@@ -73,7 +73,7 @@ jobs:
           zip -r "../../../${{ matrix.asset_name }}" ${{ matrix.artifact_name}}
 
       - name: Prepare artifact for Linux
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && matrix.asset_name == 'persona-exporter-linux.tar.gz'
         run: |
           cd target/${{ matrix.target }}/release
           tar -czf ../../../${{ matrix.asset_name }} ${{ matrix.artifact_name }}
@@ -85,11 +85,11 @@ jobs:
           Compress-Archive -Path "target\${{ matrix.target }}\release\${{ matrix.artifact_name }}" -DestinationPath "${{ github.workspace }}\${{ matrix.asset_name }}"
 
       - name: Install cargo-deb
-        if: matrix.os == 'debian-package'
+        if: matrix.os == 'ubuntu-latest' && matrix.asset_name == 'debian-package'
         uses: taiki-e/install-action@cargo-deb
 
       - name: Create Debian package
-        if: matrix.os == 'debian-package'
+        if: matrix.os == 'ubuntu-latest' && matrix.asset_name == 'debian-package'
         run: cargo-deb --target ${{ matrix.target }}
 
       - name: Upload temporary artifact
