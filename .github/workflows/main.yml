@@ -13,7 +13,6 @@ jobs:
   test:
     name: Test code
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: 0DoubleDare/persona-exporter/.github/actions/checkout_and_install_rust@develop
 
@@ -32,7 +31,7 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: test
     strategy:
       fail-fast: true
@@ -102,7 +101,7 @@ jobs:
 
   release:
     name: Release to Github Releases
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     environment: persona-exporter
