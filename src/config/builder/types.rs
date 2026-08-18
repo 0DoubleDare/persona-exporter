@@ -71,7 +71,7 @@ pub struct SystemConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AgentSection {
-    pub send_metrics_interval: u64,
+    pub send_interval: u64,
     pub send_model: SendModel,
     pub data_type: DataType,
 }
@@ -80,8 +80,10 @@ pub struct AgentSection {
 pub struct ServerSection {
     pub url: String,
     pub retries_connection: Option<u32>,
-    pub additional_get_params: Vec<ParamField>,
-    pub additional_headers: Vec<HeaderField>,
+    #[serde(default)]
+    pub get_params: Vec<ParamField>,
+    #[serde(default)]
+    pub http_headers: Vec<HeaderField>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

@@ -34,15 +34,15 @@ impl Default for AgentConfigFile {
     fn default() -> Self {
         AgentConfigFile {
             agent: AgentSection {
-                send_metrics_interval: 5,
+                send_interval: 10,
                 send_model: SendModel::default(),
                 data_type: DataType::default(),
             },
             server: ServerSection {
                 url: "https://example.com".to_string(),
                 retries_connection: None,
-                additional_get_params: Vec::new(),
-                additional_headers: Vec::new(),
+                get_params: Vec::new(),
+                http_headers: Vec::new(),
             },
             metrics: MetricsConfig {
                 processes: ProcessListConfig {

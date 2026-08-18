@@ -106,41 +106,9 @@ pub fn collect_components_metrics(components: &mut Components) -> ComponentsInfo
     }
 }
 
-pub fn collect_system_metrics(
-    sys: &mut System,
-    sort_by: &ProcessSortBy,
-    process_limit: usize,
-) -> SystemInfo {
+pub fn collect_system_metrics() -> SystemInfo {
     let load_avg = System::load_average();
     let load_avg = LoadAverage::from(load_avg);
-
-    let self_pid = get_current_pid();
-    let self_process: Option<ProcessInfo> = self_pid
-        .ok()
-        .and_then(|pid| sys.process(pid))
-        .map(Into::into);
-    let mut processes: Vec<ProcessInfo> = sys
-        .processes()
-        .iter()
-        .map(|x| ProcessInfo::from(x.1))
-        .collect();
-    let sort_by = match sort_by {
-        ProcessSortBy::CpuUsage => {
-            |a: &ProcessInfo, b: &ProcessInfo| b.cpu_usage.total_cmp(&a.cpu_usage)
-        }
-        ProcessSortBy::Memory => {
-            |a: &ProcessInfo, b: &ProcessInfo| b.memory_usage.cmp(&a.memory_usage)
-        }
-        ProcessSortBy::VirtualMemory => {
-            |a: &ProcessInfo, b: &ProcessInfo| b.virtual_memory.cmp(&a.virtual_memory)
-        }
-        ProcessSortBy::RunTime => |a: &ProcessInfo, b: &ProcessInfo| b.run_time.cmp(&a.run_time),
-        ProcessSortBy::StartTime => {
-            |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
-        }
-    };
-    processes.sort_unstable_by(sort_by);
-    processes.truncate(process_limit);
 
     SystemInfo {
         name: System::name().unwrap_or(String::from("unknown")),
@@ -154,9 +122,45 @@ pub fn collect_system_metrics(
         os_version: System::os_version().unwrap_or(String::from("unknown")),
         host_name: System::host_name().unwrap_or(String::from("unknown")),
         load_average: load_avg,
-        processes: ProcessesInfo {
-            exporter_metrics: self_process,
-            processes,
-        },
+    }
+}
+
+pub fn collect_process_list_info(
+    sys: &System,
+    sort_by: &ProcessSortBy,
+    process_limit: usize,
+) -> ProcessListInfo {
+    let self_pid = get_current_pid();
+    let self_process_metrics: Option<ProcessInfo> = self_pid
+        .ok()
+        .and_then(|pid| sys.process(pid))
+        .map(Into::into);
+
+    let mut process_list: Vec<ProcessInfo> = sys
+        .processes()
+        .iter()
+        .map(|process| ProcessInfo::from(process.1))
+        .collect();
+
+    let sort_by = match sort_by {
+        ProcessSortBy::Memory => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.memory_usage.cmp(&a.memory_usage)
+        }
+        ProcessSortBy::VirtualMemory => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.virtual_memory.cmp(&a.virtual_memory)
+        }
+        ProcessSortBy::RunTime => |a: &ProcessInfo, b: &ProcessInfo| b.run_time.cmp(&a.run_time),
+        ProcessSortBy::StartTime => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
+        }
+        // default also contain ProcessSortBy::CpuUsage
+        _ => |a: &ProcessInfo, b: &ProcessInfo| b.cpu_usage.total_cmp(&a.cpu_usage),
+    };
+    process_list.sort_unstable_by(sort_by);
+    process_list.truncate(process_limit);
+
+    ProcessListInfo {
+        exporter_metrics: self_process_metrics,
+        process_list,
     }
 }

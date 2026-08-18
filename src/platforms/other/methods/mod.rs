@@ -2,8 +2,10 @@ use crate::config::{HeaderField, ParamField};
 use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
 use persona_exporter_types::metrics::{
-    ComponentsInfo, CpuInfo, DiskInfo, MemoryInfo, NetworkInfo, ProcessesInfo, SystemInfo,
+    ComponentsInfo, CpuInfo, DiskInfo, MemoryInfo, NetworkInfo, ProcessInfo, ProcessListInfo,
+    SystemInfo,
 };
+use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
 use reqwest::{Client, RequestBuilder};
 use tracing::{debug, error, info};
 pub struct ToLineProtocolArgument<'a> {
@@ -14,15 +16,15 @@ pub struct ToLineProtocolArgument<'a> {
     pub network: &'a NetworkInfo,
     pub cpu: &'a CpuInfo,
     pub components: &'a ComponentsInfo,
-    pub processes_info: &'a ProcessesInfo,
+    pub processes_info: &'a ProcessListInfo,
 }
 pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolArgument) -> Vec<u8> {
     let lines: [LineProtocolBuilder<Vec<u8>, AfterField>; 5] = [
-        metrics.system.into(),
-        metrics.memory.into(),
-        metrics.disk.into(),
-        metrics.cpu.into(),
-        metrics.network.into(),
+        metrics.system.into_with_name("metrics_system"),
+        metrics.memory.into_with_name("metrics_memory"),
+        metrics.disk.into_with_name("metrics_disk"),
+        metrics.cpu.into_with_name("metrics_cpu"),
+        metrics.network.into_with_name("metrics_network"),
     ];
     // Сбор метрик в одну строку
     // TODO: Операция очень прожорлива по памяти поэтому надо оптимизейшн
@@ -36,7 +38,7 @@ pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolArgument) -> Vec<
         .components
         .iter()
         .flat_map(|c| {
-            LineProtocolBuilder::from(c)
+            LineProtocolBuilder::from_with_name(c, "metrics_component_list")
                 .timestamp(metrics.time)
                 .close_line()
                 .build()
@@ -45,10 +47,10 @@ pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolArgument) -> Vec<
 
     let line_processes: Vec<u8> = metrics
         .processes_info
-        .processes
+        .process_list
         .iter()
-        .flat_map(|p| {
-            LineProtocolBuilder::from(p)
+        .flat_map(|p: &ProcessInfo| {
+            LineProtocolBuilder::from_with_name(p, "metrics_process_list")
                 .timestamp(metrics.time)
                 .close_line()
                 .build()
@@ -59,7 +61,7 @@ pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolArgument) -> Vec<
         .exporter_metrics
         .iter()
         .flat_map(|p| {
-            LineProtocolBuilder::from(p)
+            LineProtocolBuilder::from_with_name(p, "metrics_process_list")
                 .timestamp(metrics.time)
                 .close_line()
                 .build()

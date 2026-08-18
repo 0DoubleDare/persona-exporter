@@ -4,7 +4,7 @@ use crate::platforms::other::methods::{
     ToLineProtocolArgument, build_request_body, collect_metrics_as_line_protocol, send_request,
 };
 use persona_exporter_types::metrics::ServerMetrics;
-use reqwest::Client;
+use reqwest::{Client, RequestBuilder};
 use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
@@ -37,9 +37,12 @@ pub async fn collect_metrics_for_os() {
     };
 
     info!("Exporter initialized");
-    let additional_headers = &config.server.additional_headers;
-    let get_params = &config.server.additional_get_params;
+    let additional_headers = &config.server.http_headers;
+    let get_params = &config.server.get_params;
     let target_url = &config.server.url;
+    let await_sec = config.agent.send_interval;
+
+    let mut send_collection: String = String::from("");
 
     let client = Client::builder()
         .timeout(Duration::from_secs(10))
@@ -67,12 +70,12 @@ pub async fn collect_metrics_for_os() {
         .enabled
         .then(Components::new_with_refreshed_list);
 
-    let await_sec = config.agent.send_metrics_interval;
     info!("Starting persona-exporter");
 
     loop {
         info!("Collect metrics...");
-        let (mem_info, cpu_info, sys_info) = if let Some(ref mut s) = sys {
+
+        let (mem_info, cpu_info, sys_info, process_list_info) = if let Some(ref mut s) = sys {
             s.refresh_all();
             (
                 config
@@ -87,8 +90,14 @@ pub async fn collect_metrics_for_os() {
                     .settings
                     .enabled
                     .then(|| collect_cpus_metrics(s)),
-                config.metrics.cpu.settings.enabled.then(|| {
-                    collect_system_metrics(
+                config
+                    .metrics
+                    .cpu
+                    .settings
+                    .enabled
+                    .then(collect_system_metrics),
+                config.metrics.processes.settings.enabled.then(|| {
+                    collect_process_list_info(
                         s,
                         &config.metrics.processes.sort_by,
                         config.metrics.processes.process_limit,
@@ -96,7 +105,7 @@ pub async fn collect_metrics_for_os() {
                 }),
             )
         } else {
-            (None, None, None)
+            (None, None, None, None)
         };
 
         let disk_info = disks.as_mut().map(|d| {
@@ -117,50 +126,52 @@ pub async fn collect_metrics_for_os() {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
+        let mut request: RequestBuilder =
+            build_request_body(&client, target_url, get_params, additional_headers);
+        match config.agent.data_type {
+            DataType::LineProtocol => {
+                send_collection.clear();
 
-        if config.agent.data_type == DataType::LineProtocol {
-            let time = time as i64;
-            let sys = sys_info.unwrap_or_default();
-            let argument = ToLineProtocolArgument {
-                time,
-                system: &sys,
-                memory: &mem_info.unwrap_or_default(),
-                disk: &disk_info.unwrap_or_default(),
-                network: &network_info.unwrap_or_default(),
-                cpu: &cpu_info.unwrap_or_default(),
-                components: &components_info.unwrap_or_default(),
-                processes_info: &sys.processes,
-            };
-            let total_line = collect_metrics_as_line_protocol(argument);
-            info!(
-                "Sending data to a specified URL: {:#?}",
-                String::from_utf8(total_line.to_vec())
-            );
+                let time = time as i64;
+                let sys_info = sys_info.unwrap_or_default();
+                let argument_for_line_builder = ToLineProtocolArgument {
+                    time,
+                    system: &sys_info,
+                    memory: &mem_info.unwrap_or_default(),
+                    disk: &disk_info.unwrap_or_default(),
+                    network: &network_info.unwrap_or_default(),
+                    cpu: &cpu_info.unwrap_or_default(),
+                    components: &components_info.unwrap_or_default(),
+                    processes_info: &process_list_info.unwrap_or_default(),
+                };
+                let total_line = collect_metrics_as_line_protocol(argument_for_line_builder);
+                info!(
+                    "Sending data to a specified URL: {:#?}",
+                    String::from_utf8(total_line.to_vec())
+                );
 
-            let request = build_request_body(&client, target_url, get_params, additional_headers)
-                .body(total_line);
+                request = request.body(total_line);
+            }
+            DataType::Json => {
+                let machine_metrics = ServerMetrics {
+                    system: sys_info,
+                    process_list: process_list_info,
+                    memory: mem_info,
+                    disk: disk_info,
+                    network: network_info,
+                    cpu: cpu_info,
+                    components: components_info,
+                    time: time as u64,
+                };
 
-            send_request(request).await;
-        } else {
-            let machine_metrics = ServerMetrics {
-                system: sys_info,
-                memory: mem_info,
-                disk: disk_info,
-                network: network_info,
-                cpu: cpu_info,
-                components: components_info,
-                time: time as u64,
-            };
+                info!("Config: {:#?}", &config);
+                info!("Machine metrics: {:#?}", machine_metrics);
 
-            info!("Config: {:#?}", &config);
-            info!("Machine metrics: {:#?}", machine_metrics);
-
-            let request = build_request_body(&client, target_url, get_params, additional_headers)
-                .json(&machine_metrics);
-            info!("Sending data to a specified URL: {:?}", request);
-
-            send_request(request).await;
+                request = request.json(&machine_metrics);
+            }
         }
+
+        send_request(request).await;
 
         info!("Next metrics before {} seconds", await_sec);
         sleep(Duration::from_secs(await_sec)).await;
