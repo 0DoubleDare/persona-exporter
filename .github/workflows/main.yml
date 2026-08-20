@@ -33,6 +33,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     needs: test
+    environment: persona-exporter
     strategy:
       fail-fast: true
       matrix:
