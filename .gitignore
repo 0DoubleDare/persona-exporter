@@ -1,3 +1,8 @@
 ./target
 ./.idea
 ./debian/usr/bin/*
+
+./perf.data
+./perf.data.old
+./profile.json.gz
+./flamegraph.svg

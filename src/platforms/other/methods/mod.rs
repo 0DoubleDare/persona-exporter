@@ -1,24 +1,16 @@
-use crate::config::{HeaderField, ParamField};
+pub mod types;
+
+use crate::config::AgentConfigFile;
+use crate::platforms::other::methods::types::RequestBodyOptions;
+pub(crate) use crate::platforms::other::methods::types::ToLineProtocolOptions;
 use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
-use persona_exporter_types::metrics::{
-    ComponentsInfo, CpuInfo, DiskInfo, MemoryInfo, NetworkInfo, ProcessInfo, ProcessListInfo,
-    SystemInfo,
-};
+use persona_exporter_types::metrics::ProcessInfo;
 use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
-use reqwest::{Client, RequestBuilder};
+use reqwest::RequestBuilder;
 use tracing::{debug, error, info};
-pub struct ToLineProtocolArgument<'a> {
-    pub time: i64,
-    pub system: &'a SystemInfo,
-    pub memory: &'a MemoryInfo,
-    pub disk: &'a DiskInfo,
-    pub network: &'a NetworkInfo,
-    pub cpu: &'a CpuInfo,
-    pub components: &'a ComponentsInfo,
-    pub processes_info: &'a ProcessListInfo,
-}
-pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolArgument) -> Vec<u8> {
+
+pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolOptions) -> Vec<u8> {
     let lines: [LineProtocolBuilder<Vec<u8>, AfterField>; 5] = [
         metrics.system.into_with_name("metrics_system"),
         metrics.memory.into_with_name("metrics_memory"),
@@ -76,18 +68,15 @@ pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolArgument) -> Vec<
     .concat()
 }
 
-pub fn build_request_body(
-    client: &Client,
-    url: &String,
-    get_params: &[ParamField],
-    headers: &[HeaderField],
-) -> RequestBuilder {
-    let get_pairs: Vec<(&str, &str)> = get_params
+pub fn build_request_body(options: &RequestBodyOptions) -> RequestBuilder {
+    let get_pairs: Vec<(&str, &str)> = options
+        .get_params
         .iter()
         .map(|p| (p.key.as_str(), p.value.as_str()))
         .collect();
-    let base = client.post(url).query(&get_pairs);
-    headers
+    let base = options.client.post(&options.url).query(&get_pairs);
+    options
+        .headers
         .iter()
         .fold(base, |acc, header| acc.header(&header.key, &header.value))
 }
@@ -123,4 +112,17 @@ pub async fn send_request(request: RequestBuilder) {
             error!("Send error: {}", err)
         }
     }
+}
+
+pub fn load_config_file() -> AgentConfigFile {
+    AgentConfigFile::new().unwrap_or_else(|err| {
+        error!("Something is wrong in your config file");
+        panic!("{}", err);
+    })
+}
+
+pub fn initial_tracing(debug: bool) {
+    tracing_subscriber::fmt()
+        .with_env_filter(if debug { "debug" } else { "info" })
+        .init();
 }

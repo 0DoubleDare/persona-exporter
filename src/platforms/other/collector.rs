@@ -1,7 +1,9 @@
-use crate::config::{AgentConfigFile, DataType};
+use crate::config::DataType;
 use crate::metrics::*;
+use crate::platforms::other::methods::types::RequestBodyOptions;
 use crate::platforms::other::methods::{
-    ToLineProtocolArgument, build_request_body, collect_metrics_as_line_protocol, send_request,
+    ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, initial_tracing,
+    load_config_file, send_request,
 };
 use persona_exporter_types::metrics::ServerMetrics;
 use reqwest::{Client, RequestBuilder};
@@ -17,24 +19,9 @@ pub async fn collect_metrics_for_os() {
         .parse()
         .unwrap_or(true);
 
-    tracing_subscriber::fmt()
-        .with_env_filter(if debug_mode { "debug" } else { "info" })
-        .init();
-    let config: AgentConfigFile = match AgentConfigFile::new() {
-        Ok(value) => {
-            info!("Config file parsed successfully",);
-            value
-        }
-        Err(err) => {
-            panic!(
-                r#"
-                Something went wrong while loading the configuration.
-                Your environment variables or configuration file is invalid.
-                Error: {err}
-                "#
-            );
-        }
-    };
+    initial_tracing(debug_mode);
+
+    let config = load_config_file();
 
     info!("Exporter initialized");
     let additional_headers = &config.server.http_headers;
@@ -48,6 +35,13 @@ pub async fn collect_metrics_for_os() {
         .timeout(Duration::from_secs(10))
         .build()
         .unwrap();
+
+    let request_options = RequestBodyOptions {
+        client,
+        url: target_url.clone(),
+        get_params: get_params.clone(),
+        headers: additional_headers.clone(),
+    };
 
     let mut sys = (config.metrics.cpu.settings.enabled || config.metrics.memory.settings.enabled)
         .then(sysinfo::System::new);
@@ -126,15 +120,15 @@ pub async fn collect_metrics_for_os() {
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let mut request: RequestBuilder =
-            build_request_body(&client, target_url, get_params, additional_headers);
+
+        let mut request: RequestBuilder = build_request_body(&request_options);
         match config.agent.data_type {
             DataType::LineProtocol => {
                 send_collection.clear();
 
                 let time = time as i64;
                 let sys_info = sys_info.unwrap_or_default();
-                let argument_for_line_builder = ToLineProtocolArgument {
+                let argument_for_line_builder = ToLineProtocolOptions {
                     time,
                     system: &sys_info,
                     memory: &mem_info.unwrap_or_default(),
