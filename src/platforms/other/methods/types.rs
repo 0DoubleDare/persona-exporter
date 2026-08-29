@@ -2,7 +2,7 @@ use crate::config::{HeaderField, ParamField};
 use persona_exporter_types::metrics::{
     ComponentsInfo, CpuInfo, DiskInfo, MemoryInfo, NetworkInfo, ProcessListInfo, SystemInfo,
 };
-use reqwest::Client;
+use deboa_smol::Client;
 
 pub struct ToLineProtocolOptions<'a> {
     pub time: i64,

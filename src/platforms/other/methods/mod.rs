@@ -1,5 +1,7 @@
 pub mod types;
 
+use deboa::HttpClient;
+use deboa::request::{post, DeboaRequestBuilder};
 use crate::config::AgentConfigFile;
 use crate::platforms::other::methods::types::RequestBodyOptions;
 pub(crate) use crate::platforms::other::methods::types::ToLineProtocolOptions;
@@ -7,7 +9,6 @@ use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
 use persona_exporter_types::metrics::ProcessInfo;
 use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
-use reqwest::RequestBuilder;
 use tracing::{debug, error, info};
 
 pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolOptions) -> Vec<u8> {
@@ -68,25 +69,37 @@ pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolOptions) -> Vec<u
     .concat()
 }
 
-pub fn build_request_body(options: &RequestBodyOptions) -> RequestBuilder {
-    let get_pairs: Vec<(&str, &str)> = options
-        .get_params
-        .iter()
-        .map(|p| (p.key.as_str(), p.value.as_str()))
-        .collect();
-    let base = options.client.post(&options.url).query(&get_pairs);
-    options
+pub fn build_request_body(options: &RequestBodyOptions) -> DeboaRequestBuilder {
+    let mut total_url = options.url.clone();
+
+    if !options.get_params.is_empty() {
+        let mut query_string = String::new();
+        let get_url_pairs = form_urlencoded::Serializer::new(&mut query_string);
+
+    options.get_params.iter()
+            .fold(get_url_pairs, |mut acc, get_param| {
+                acc.append_pair(get_param.key.as_str(), get_param.value.as_str());
+                acc
+            }).finish();
+        total_url = format!("{}?{}", total_url, query_string);
+    }
+    let headers: Vec<(&str, &str)> = options
         .headers
         .iter()
-        .fold(base, |acc, header| acc.header(&header.key, &header.value))
+        .map(|h| (h.key.as_str(), h.value.as_str()))
+        .collect();
+
+
+    post(total_url).unwrap().headers(headers)
+
 }
 
-pub async fn send_request(request: RequestBuilder) {
-    let response = request.send().await;
+pub async fn send_request(request: DeboaRequestBuilder, mut client: deboa_smol::Client) {
+    let response = request.send_with(&mut client).await;
 
     match response {
-        Ok(response) => {
-            let response_status = response.status();
+        Ok(success_response) => {
+            let response_status = success_response.status();
             let status_code_type = response_status.as_u16() / 100;
             match status_code_type {
                 4 => {
@@ -99,13 +112,10 @@ pub async fn send_request(request: RequestBuilder) {
                     info!("Positive server response: {}", response_status);
                 }
             }
-            debug!("{:#?}", response);
+            debug!("{:#?}", success_response);
             debug!(
                 "{}",
-                response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Body JSON is empty".to_string())
+                success_response.text().await.unwrap_or_default()
             )
         }
         Err(err) => {

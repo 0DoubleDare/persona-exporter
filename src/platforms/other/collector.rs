@@ -6,14 +6,13 @@ use crate::platforms::other::methods::{
     load_config_file, send_request,
 };
 use persona_exporter_types::metrics::ServerMetrics;
-use reqwest::{Client, RequestBuilder};
 use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
-use tokio::time::sleep;
 use tracing::info;
+use deboa::request::{DeboaRequestBuilder};
 
-pub async fn collect_metrics_for_os() {
+pub fn collect_metrics_for_os() {
     let debug_mode: bool = env::var("DEBUG")
         .unwrap_or_else(|_| "true".to_string())
         .parse()
@@ -31,10 +30,11 @@ pub async fn collect_metrics_for_os() {
 
     let mut send_collection: String = String::from("");
 
-    let client = Client::builder()
-        .timeout(Duration::from_secs(10))
-        .build()
-        .unwrap();
+    // let client = Client::builder()
+    //     .timeout(Duration::from_secs(10))
+    //     .build()
+    //     .unwrap();
+    let client = deboa_smol::Client::default();
 
     let request_options = RequestBodyOptions {
         client,
@@ -121,7 +121,7 @@ pub async fn collect_metrics_for_os() {
             .unwrap()
             .as_nanos();
 
-        let mut request: RequestBuilder = build_request_body(&request_options);
+        let mut request: DeboaRequestBuilder = build_request_body(&request_options);
         match config.agent.data_type {
             DataType::LineProtocol => {
                 send_collection.clear();
@@ -144,7 +144,7 @@ pub async fn collect_metrics_for_os() {
                     String::from_utf8(total_line.to_vec())
                 );
 
-                request = request.body(total_line);
+                request = request.body(::from(total_line));
             }
             DataType::Json => {
                 let machine_metrics = ServerMetrics {
@@ -161,7 +161,7 @@ pub async fn collect_metrics_for_os() {
                 info!("Config: {:#?}", &config);
                 info!("Machine metrics: {:#?}", machine_metrics);
 
-                request = request.json(&machine_metrics);
+                request = request.body(hyper_body_utils::).body_as()
             }
         }
 
