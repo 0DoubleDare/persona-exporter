@@ -1,9 +1,9 @@
 pub mod types;
 
-use deboa::request::{post, DeboaRequestBuilder};
 use crate::config::AgentConfigFile;
 use crate::platforms::other::methods::types::RequestBodyOptions;
 pub(crate) use crate::platforms::other::methods::types::ToLineProtocolOptions;
+use deboa::request::{DeboaRequestBuilder, post};
 use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
 use persona_exporter_types::metrics::ProcessInfo;
@@ -76,11 +76,14 @@ pub fn build_request_body(options: &RequestBodyOptions) -> DeboaRequestBuilder {
         let mut query_string = String::new();
         let get_url_pairs = form_urlencoded::Serializer::new(&mut query_string);
 
-    options.get_params.iter()
+        options
+            .get_params
+            .iter()
             .fold(get_url_pairs, |mut acc, get_param| {
                 acc.append_pair(get_param.key.as_str(), get_param.value.as_str());
                 acc
-            }).finish();
+            })
+            .finish();
         total_url = format!("{}?{}", total_url, query_string);
     }
     let headers: Vec<(&str, &str)> = options
@@ -89,12 +92,11 @@ pub fn build_request_body(options: &RequestBodyOptions) -> DeboaRequestBuilder {
         .map(|h| (h.key.as_str(), h.value.as_str()))
         .collect();
 
-
-    post(total_url).unwrap()
+    post(total_url)
+        .unwrap()
         .headers(headers)
         .header(http::header::HOST, &options.host)
         .header(http::header::CONNECTION, "keep_alive")
-
 }
 
 pub async fn send_request(request: DeboaRequestBuilder, client: &deboa_smol::Client) {
@@ -116,10 +118,7 @@ pub async fn send_request(request: DeboaRequestBuilder, client: &deboa_smol::Cli
                 }
             }
             debug!("{:#?}", success_response);
-            debug!(
-                "{}",
-                success_response.text().await.unwrap_or_default()
-            )
+            debug!("{}", success_response.text().await.unwrap_or_default())
         }
         Err(err) => {
             error!("Send error: {}", err)
@@ -142,7 +141,9 @@ pub fn initial_tracing(debug: bool) {
 
 pub fn get_host_from_url(url: &str) -> String {
     if let Ok(parsed_url) = Url::parse(url) {
-        return parsed_url.host_str().unwrap_or("localhost").to_string()
+        return parsed_url.host_str().unwrap_or("localhost").to_string();
     };
     "incorrect_url".to_string()
 }
+
+// pub fn parse_cli_arguments()
