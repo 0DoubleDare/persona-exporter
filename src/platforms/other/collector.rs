@@ -1,18 +1,16 @@
 use crate::config::DataType;
 use crate::metrics::*;
 use crate::platforms::other::methods::types::RequestBodyOptions;
-use crate::platforms::other::methods::{
-    ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, initial_tracing,
-    load_config_file, send_request,
-};
+use crate::platforms::other::methods::{ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, initial_tracing, load_config_file, send_request, get_host_from_url};
 use persona_exporter_types::metrics::ServerMetrics;
 use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
-use tracing::info;
+use tracing::{info};
 use deboa::request::{DeboaRequestBuilder};
+use hyper_body_utils::HttpBody;
 
-pub fn collect_metrics_for_os() {
+pub async fn collect_metrics_for_os() {
     let debug_mode: bool = env::var("DEBUG")
         .unwrap_or_else(|_| "true".to_string())
         .parse()
@@ -30,15 +28,12 @@ pub fn collect_metrics_for_os() {
 
     let mut send_collection: String = String::from("");
 
-    // let client = Client::builder()
-    //     .timeout(Duration::from_secs(10))
-    //     .build()
-    //     .unwrap();
     let client = deboa_smol::Client::default();
 
     let request_options = RequestBodyOptions {
         client,
         url: target_url.clone(),
+        host: get_host_from_url(target_url),
         get_params: get_params.clone(),
         headers: additional_headers.clone(),
     };
@@ -69,52 +64,89 @@ pub fn collect_metrics_for_os() {
     loop {
         info!("Collect metrics...");
 
-        let (mem_info, cpu_info, sys_info, process_list_info) = if let Some(ref mut s) = sys {
-            s.refresh_all();
-            (
-                config
-                    .metrics
-                    .memory
-                    .settings
-                    .enabled
-                    .then(|| collect_memory_metrics(s)),
-                config
-                    .metrics
-                    .cpu
-                    .settings
-                    .enabled
-                    .then(|| collect_cpus_metrics(s)),
-                config
-                    .metrics
-                    .cpu
-                    .settings
-                    .enabled
-                    .then(collect_system_metrics),
-                config.metrics.processes.settings.enabled.then(|| {
-                    collect_process_list_info(
-                        s,
-                        &config.metrics.processes.sort_by,
-                        config.metrics.processes.process_limit,
-                    )
-                }),
-            )
-        } else {
-            (None, None, None, None)
-        };
+        let config_clone = config.clone();
+        // let mut sys_copy = sys.take();
+        let (mem_info, cpu_info, sys_info, process_list_info, returned_sys) = smol::unblock(move || {
+            if let Some(ref mut s) = sys {
+                s.refresh_all();
+                (
+                    config_clone
+                        .metrics
+                        .memory
+                        .settings
+                        .enabled
+                        .then(|| collect_memory_metrics(s)),
+                    config_clone
+                        .metrics
+                        .cpu
+                        .settings
+                        .enabled
+                        .then(|| collect_cpus_metrics(s)),
+                    config_clone
+                        .metrics
+                        .cpu
+                        .settings
+                        .enabled
+                        .then(collect_system_metrics),
+                    config_clone.metrics.processes.settings.enabled.then(|| {
+                        collect_process_list_info(
+                            s,
+                            &config_clone.metrics.processes.sort_by,
+                            config_clone.metrics.processes.process_limit,
+                        )
+                    }),
+                    sys
+                )
+            } else {
+                (None, None, None, None, None)
+            }
+        }).await;
+        sys = returned_sys;
 
-        let disk_info = disks.as_mut().map(|d| {
-            d.refresh(false);
+        // let disk_info = disks.as_mut().map(|d| {
+        //     d.refresh(false);
+        //
+        //     collect_disk_metrics(d, "/")
+        // });
 
-            collect_disk_metrics(d, "/")
-        });
-        let network_info = networks.as_mut().map(|n| {
-            n.refresh(false);
-            collect_network_metrics(n)
-        });
-        let components_info = components.as_mut().map(|c| {
-            c.refresh(false);
-            collect_components_metrics(c)
-        });
+        let (disk_info, returned_disk) = smol::unblock(move || {
+            let disk_info = disks.as_mut().map(|d| {
+                d.refresh(false);
+                collect_disk_metrics(d, "/")
+            });
+            (disk_info, disks)
+        }).await;
+        disks = returned_disk;
+
+        // let network_info = networks.as_mut().map(|n| {
+        //     n.refresh(false);
+        //     collect_network_metrics(n)
+        // });
+
+        let (network_info, returned_network) = smol::unblock(move || {
+            let network_info = networks.as_mut().map(|n| {
+               n.refresh(false);
+                collect_network_metrics(n)
+            });
+
+            (network_info, networks)
+        }).await;
+        networks = returned_network;
+
+        // let components_info = components.as_mut().map(|c| {
+        //     c.refresh(false);
+        //     collect_components_metrics(c)
+        // });
+
+        let (components_info, returned_components) = smol::unblock(move || {
+            let components_info = components.as_mut().map(|c| {
+                c.refresh(false);
+                collect_components_metrics(c)
+            });
+
+            (components_info, components)
+        }).await;
+        components = returned_components;
 
         let time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
@@ -122,6 +154,7 @@ pub fn collect_metrics_for_os() {
             .as_nanos();
 
         let mut request: DeboaRequestBuilder = build_request_body(&request_options);
+
         match config.agent.data_type {
             DataType::LineProtocol => {
                 send_collection.clear();
@@ -144,7 +177,7 @@ pub fn collect_metrics_for_os() {
                     String::from_utf8(total_line.to_vec())
                 );
 
-                request = request.body(::from(total_line));
+                request = request.body(HttpBody::from(total_line));
             }
             DataType::Json => {
                 let machine_metrics = ServerMetrics {
@@ -161,13 +194,16 @@ pub fn collect_metrics_for_os() {
                 info!("Config: {:#?}", &config);
                 info!("Machine metrics: {:#?}", machine_metrics);
 
-                request = request.body(hyper_body_utils::).body_as()
+                // let json_metrics = serde_json::to_string(&machine_metrics).expect("Failed to serialize to json");
+                let body = serde_json::json!(machine_metrics);
+
+                request = request.body_as(deboa_extras::serde::json::JsonBody, body).expect("Failed to create request body");
             }
         }
 
-        send_request(request).await;
+        send_request(request, &request_options.client).await;
 
         info!("Next metrics before {} seconds", await_sec);
-        sleep(Duration::from_secs(await_sec)).await;
+        smol::Timer::after(Duration::from_secs(await_sec)).await;
     }
 }

@@ -1,6 +1,5 @@
 pub mod types;
 
-use deboa::HttpClient;
 use deboa::request::{post, DeboaRequestBuilder};
 use crate::config::AgentConfigFile;
 use crate::platforms::other::methods::types::RequestBodyOptions;
@@ -10,6 +9,7 @@ use influxdb_line_protocol::builder::AfterField;
 use persona_exporter_types::metrics::ProcessInfo;
 use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
 use tracing::{debug, error, info};
+use url::Url;
 
 pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolOptions) -> Vec<u8> {
     let lines: [LineProtocolBuilder<Vec<u8>, AfterField>; 5] = [
@@ -90,12 +90,15 @@ pub fn build_request_body(options: &RequestBodyOptions) -> DeboaRequestBuilder {
         .collect();
 
 
-    post(total_url).unwrap().headers(headers)
+    post(total_url).unwrap()
+        .headers(headers)
+        .header(http::header::HOST, &options.host)
+        .header(http::header::CONNECTION, "keep_alive")
 
 }
 
-pub async fn send_request(request: DeboaRequestBuilder, mut client: deboa_smol::Client) {
-    let response = request.send_with(&mut client).await;
+pub async fn send_request(request: DeboaRequestBuilder, client: &deboa_smol::Client) {
+    let response = request.send_with(client).await;
 
     match response {
         Ok(success_response) => {
@@ -135,4 +138,11 @@ pub fn initial_tracing(debug: bool) {
     tracing_subscriber::fmt()
         .with_env_filter(if debug { "debug" } else { "info" })
         .init();
+}
+
+pub fn get_host_from_url(url: &str) -> String {
+    if let Ok(parsed_url) = Url::parse(url) {
+        return parsed_url.host_str().unwrap_or("localhost").to_string()
+    };
+    "incorrect_url".to_string()
 }

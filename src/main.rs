@@ -9,10 +9,11 @@ async fn main(spawner: embassy_executor::Spawner) {
 
 #[cfg(not(target_os = "none"))]
 use mimalloc::MiMalloc;
-use smol::io;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
 fn main() {
-        other::collector::collect_metrics_for_os();
+        smol::block_on(async {
+            other::collector::collect_metrics_for_os().await;
+        })
 }

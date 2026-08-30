@@ -18,6 +18,7 @@ pub struct ToLineProtocolOptions<'a> {
 pub struct RequestBodyOptions {
     pub client: Client,
     pub url: String,
+    pub host: String,
     pub get_params: Vec<ParamField>,
     pub headers: Vec<HeaderField>,
 }
