@@ -65,7 +65,6 @@ pub async fn collect_metrics_for_os() {
         info!("Collect metrics...");
 
         let config_clone = config.clone();
-        // let mut sys_copy = sys.take();
         let (mem_info, cpu_info, sys_info, process_list_info, returned_sys) = smol::unblock(move || {
             if let Some(ref mut s) = sys {
                 s.refresh_all();
@@ -103,12 +102,6 @@ pub async fn collect_metrics_for_os() {
         }).await;
         sys = returned_sys;
 
-        // let disk_info = disks.as_mut().map(|d| {
-        //     d.refresh(false);
-        //
-        //     collect_disk_metrics(d, "/")
-        // });
-
         let (disk_info, returned_disk) = smol::unblock(move || {
             let disk_info = disks.as_mut().map(|d| {
                 d.refresh(false);
@@ -117,11 +110,6 @@ pub async fn collect_metrics_for_os() {
             (disk_info, disks)
         }).await;
         disks = returned_disk;
-
-        // let network_info = networks.as_mut().map(|n| {
-        //     n.refresh(false);
-        //     collect_network_metrics(n)
-        // });
 
         let (network_info, returned_network) = smol::unblock(move || {
             let network_info = networks.as_mut().map(|n| {
@@ -132,11 +120,6 @@ pub async fn collect_metrics_for_os() {
             (network_info, networks)
         }).await;
         networks = returned_network;
-
-        // let components_info = components.as_mut().map(|c| {
-        //     c.refresh(false);
-        //     collect_components_metrics(c)
-        // });
 
         let (components_info, returned_components) = smol::unblock(move || {
             let components_info = components.as_mut().map(|c| {
@@ -172,12 +155,14 @@ pub async fn collect_metrics_for_os() {
                     processes_info: &process_list_info.unwrap_or_default(),
                 };
                 let total_line = collect_metrics_as_line_protocol(argument_for_line_builder);
+                let total_line = String::from_utf8(total_line.to_vec()).unwrap_or_default();
                 info!(
                     "Sending data to a specified URL: {:#?}",
-                    String::from_utf8(total_line.to_vec())
+                    total_line
                 );
 
-                request = request.body(HttpBody::from(total_line));
+                request = request.header(http::header::CONTENT_LENGTH, &total_line.len().to_string())
+                    .body(HttpBody::from(total_line));
             }
             DataType::Json => {
                 let machine_metrics = ServerMetrics {
