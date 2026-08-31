@@ -44,7 +44,7 @@ impl Default for AgentConfigFile {
                 push: SectionPushModel {
                     url: "https://example.com".to_string(),
                     retries_connection: None,
-                    get_params: vec![],
+                    url_params: vec![],
                     http_headers: vec![],
                 },
                 pull: SectionPullModel {

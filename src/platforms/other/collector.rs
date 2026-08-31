@@ -25,7 +25,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     //
     info!("Exporter initialized");
     let additional_headers = &config.server.push.http_headers;
-    let get_params = &config.server.push.get_params;
+    let get_params = &config.server.push.url_params;
     let target_url = &config.server.push.url;
     let await_sec = config.agent.send_interval;
 

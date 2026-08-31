@@ -414,7 +414,7 @@ server:
         value: "text-plain; charset=utf-8"
     # Дополнительно устанавливаем URL переменные которые требует Influx DB v2
     # Они добавятся в конце ващего URL
-    get_params:
+    url_params:
       # Указываем нашу организацию
       - key: "org"
         value: "my-great-company"
@@ -460,7 +460,7 @@ metrics:
 фичи так могут и не быть реализованы
 
 - [ ] Форматы
-  - [X] Поддержка Line Protocol для InfluxDB
+  - [X] Поддержка Line Protocol для InfluxDB v2
   - [X] Поддержка JSON 
   - [ ] Поддержка стандарта OpenMetrics 
 - [ ] Функционал

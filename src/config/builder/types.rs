@@ -99,7 +99,7 @@ pub struct SectionPushModel {
     pub url: String,
     pub retries_connection: Option<u32>,
     #[serde(default)]
-    pub get_params: Vec<ParamField>,
+    pub url_params: Vec<ParamField>,
     #[serde(default)]
     pub http_headers: Vec<HeaderField>,
 }
