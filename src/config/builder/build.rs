@@ -1,8 +1,7 @@
 use crate::config::*;
-use config::{Config, ConfigError, File, FileFormat};
+use config::{Config, ConfigError};
 use config_shellexpand::TemplatedFile;
 use std::env;
-use std::fs::FileType;
 use std::path::PathBuf;
 use tracing::info;
 

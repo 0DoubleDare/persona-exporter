@@ -2,13 +2,11 @@ use crate::config::{AgentConfigFile, DataType};
 use crate::metrics::*;
 use crate::platforms::other::methods::arguments::RequestBodyOptions;
 use crate::platforms::other::methods::{
-    ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, get_host,
-    initial_tracing, load_config, send_request,
+    ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, get_host, send_request,
 };
 use deboa::request::DeboaRequestBuilder;
 use hyper_body_utils::HttpBody;
 use persona_exporter_types::metrics::ServerMetrics;
-use std::env;
 use std::time::{Duration, SystemTime};
 use sysinfo::{Components, Disks, Networks};
 use tracing::info;
