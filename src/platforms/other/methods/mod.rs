@@ -1,8 +1,8 @@
-pub mod types;
+pub mod arguments;
 
 use crate::config::AgentConfigFile;
-use crate::platforms::other::methods::types::RequestBodyOptions;
-pub(crate) use crate::platforms::other::methods::types::ToLineProtocolOptions;
+use crate::platforms::other::methods::arguments::RequestBodyOptions;
+pub(crate) use crate::platforms::other::methods::arguments::ToLineProtocolOptions;
 use deboa::request::{DeboaRequestBuilder, post};
 use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
@@ -126,7 +126,7 @@ pub async fn send_request(request: DeboaRequestBuilder, client: &deboa_smol::Cli
     }
 }
 
-pub fn load_config_file() -> AgentConfigFile {
+pub fn load_config() -> AgentConfigFile {
     AgentConfigFile::new().unwrap_or_else(|err| {
         error!("Something is wrong in your config file");
         panic!("{}", err);
@@ -139,7 +139,7 @@ pub fn initial_tracing(debug: bool) {
         .init();
 }
 
-pub fn get_host_from_url(url: &str) -> String {
+pub fn get_host(url: &str) -> String {
     if let Ok(parsed_url) = Url::parse(url) {
         return parsed_url.host_str().unwrap_or("localhost").to_string();
     };

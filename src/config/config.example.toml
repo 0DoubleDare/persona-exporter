@@ -1,6 +1,6 @@
 [agent]
 # Интервал отправки метрик в секундах. Чем меньше - тем больше нагрузка на систему
-send_metrics_interval = 5
+send_metrics = 5
 # "push" or "pull" | INDEV
 send_model = "push"
 # "line_protocol" or "json"

@@ -78,6 +78,24 @@ pub struct AgentSection {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ServerSection {
+    pub push: SectionPushModel,
+    pub pull: SectionPullModel,
+    // pub url: String,
+    // pub retries_connection: Option<u32>,
+    // #[serde(default)]
+    // pub get_params: Vec<ParamField>,
+    // #[serde(default)]
+    // pub http_headers: Vec<HeaderField>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct SectionPullModel {
+    pub route: String,
+    pub host: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct SectionPushModel {
     pub url: String,
     pub retries_connection: Option<u32>,
     #[serde(default)]
@@ -108,8 +126,8 @@ pub struct CommonMetricSetting {
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum SendModel {
-    #[default]
     Pull,
+    #[default]
     Push,
 }
 
@@ -119,6 +137,7 @@ pub enum DataType {
     #[default]
     Json,
     LineProtocol,
+    // OpenMetrics,
 }
 
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]

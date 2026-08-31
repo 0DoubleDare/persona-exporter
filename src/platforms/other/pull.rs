@@ -1,1 +1,5 @@
-// pub fn collect_metrics_by_pull() {}
+use crate::config::AgentConfigFile;
+pub fn metrics_by_pull(config: &AgentConfigFile) {
+
+
+}
