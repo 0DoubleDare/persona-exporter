@@ -18,10 +18,11 @@ persona-exporter-types = { version = "2.1.1", features = ["full"] }
 influxdb-line-protocol = "2.0.0"
 sysinfo = { version = "0.39.3", features = ["system"] }
 smol = "2.0.2"
-deboa = { version = "0.1.3", default-features = false }
-deboa-smol = { version = "0.1.3", features = ["rust-tls"]}
-deboa-extras = "0.1.0"
-hyper-body-utils = "0.1.16"
+surf = { version = "2.3.2"}
+#deboa = { version = "0.1.3", default-features = false }
+#deboa-smol = { version = "0.1.3", features = ["rust-tls"]}
+#deboa-extras = "0.1.0"
+#hyper-body-utils = "0.1.16"
 form_urlencoded = "1.2.2"
 http = "1.5.0"
 url = "2.5.8"

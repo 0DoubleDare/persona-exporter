@@ -4,12 +4,12 @@ use crate::platforms::other::methods::arguments::RequestBodyOptions;
 use crate::platforms::other::methods::{
     ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, get_host, send_request,
 };
-use deboa::request::DeboaRequestBuilder;
-use hyper_body_utils::HttpBody;
 use persona_exporter_types::metrics::ServerMetrics;
 use std::time::{Duration, SystemTime};
+use surf::{Client, RequestBuilder};
 use sysinfo::{Components, Disks, Networks};
 use tracing::info;
+use url::Url;
 
 pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     // let debug_mode: bool = env::var("DEBUG")
@@ -27,7 +27,18 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let target_url = &config.server.push.url;
     let await_sec = config.agent.send_interval;
 
-    let client = deboa_smol::Client::default();
+    // let mut connection_pool = HttpConnectionPool::default();
+    // connection_pool.set_keep_alive_duration(Duration::from_secs(1));
+    // connection_pool.set_max_idle_connections(0);
+
+    // let client = deboa_smol::Client::builder()
+    //     .connection_pool(connection_pool)
+    //     .build();
+
+    let client: Client = surf::Config::new()
+        .set_base_url(Url::parse(target_url).unwrap())
+        .try_into().unwrap();
+
 
     let request_options = RequestBodyOptions {
         client,
@@ -121,7 +132,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                 .unwrap()
                 .as_nanos() as u64;
 
-            let mut request: DeboaRequestBuilder = build_request_body(&request_options);
+            let mut request: RequestBuilder = build_request_body(&request_options);
 
             match config.agent.data_type {
                 DataType::LineProtocol => {
@@ -142,8 +153,8 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                     info!("Sending data to a specified URL: {:#?}", line_protocol_buffer);
 
                     request = request
-                        .header(http::header::CONTENT_LENGTH, &line_protocol_buffer.len().to_string())
-                        .body(HttpBody::from(line_protocol_buffer));
+                        // .header(http::header::CONTENT_LENGTH.as_str(), &line_protocol_buffer.len().to_string())
+                        .body_bytes(line_protocol_buffer);
                 }
                 DataType::Json => {
                     metrics = ServerMetrics {
@@ -160,10 +171,10 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                     info!("Machine metrics: {:#?}", metrics);
 
                     // let json_metrics = serde_json::to_string(&machine_metrics).expect("Failed to serialize to json");
-                    let body = serde_json::json!(metrics);
+                    let json_body = serde_json::json!(metrics);
 
                     request = request
-                        .body_as(deboa_extras::serde::json::JsonBody, body)
+                        .body_json(&json_body)
                         .expect("Failed to create request body");
                 }
             }

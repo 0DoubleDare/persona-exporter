@@ -1,8 +1,8 @@
 use crate::config::{HeaderField, ParamField};
-use deboa_smol::Client;
 use persona_exporter_types::metrics::{
     ComponentsInfo, CpuInfo, DiskInfo, MemoryInfo, NetworkInfo, ProcessListInfo, SystemInfo,
 };
+use surf::Client;
 
 pub struct ToLineProtocolOptions<'a> {
     pub time: i64,
