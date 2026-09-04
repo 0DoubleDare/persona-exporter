@@ -4,7 +4,7 @@ use crate::platforms::other::methods::arguments::RequestBodyOptions;
 use crate::platforms::other::methods::{
     ToLineProtocolOptions, build_request_body, collect_metrics_as_line_protocol, get_host, send_request,
 };
-use persona_exporter_types::metrics::ServerMetrics;
+use persona_exporter_types::metrics::{ServerMetrics, SystemInfo};
 use std::time::{Duration, SystemTime};
 use surf::{Client, RequestBuilder};
 use sysinfo::{Components, Disks, Networks};
@@ -26,7 +26,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let get_params = &config.server.push.url_params;
     let target_url = &config.server.push.url;
     let await_sec = config.agent.send_interval;
-
+    let system_info_container = SystemInfo::default();
     // let mut connection_pool = HttpConnectionPool::default();
     // connection_pool.set_keep_alive_duration(Duration::from_secs(1));
     // connection_pool.set_max_idle_connections(0);
@@ -78,33 +78,32 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
         loop {
             info!("Collect metrics...");
 
-            let config_clone = config.clone();
             let (memory_info, cpu_info, system_info, process_list_info) = if let Some(ref mut s) = sys {
                 s.refresh_all();
                 (
-                    config_clone
+                    config
                         .metrics
                         .memory
                         .settings
                         .enabled
                         .then(|| collect_memory_metrics(s)),
-                    config_clone
+                    config
                         .metrics
                         .cpu
                         .settings
                         .enabled
                         .then(|| collect_cpus_metrics(s)),
-                    config_clone
+                    config
                         .metrics
                         .cpu
                         .settings
                         .enabled
                         .then(collect_system_metrics),
-                    config_clone.metrics.processes.settings.enabled.then(|| {
+                    config.metrics.processes.settings.enabled.then(|| {
                         collect_process_list_info(
                             s,
-                            &config_clone.metrics.processes.sort_by,
-                            config_clone.metrics.processes.process_limit,
+                            &config.metrics.processes.sort_by,
+                            config.metrics.processes.process_limit,
                         )
                     }),
                 )
