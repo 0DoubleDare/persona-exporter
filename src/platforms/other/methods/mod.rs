@@ -1,6 +1,5 @@
 pub mod arguments;
 
-use std::collections::BTreeMap;
 use crate::config::AgentConfigFile;
 use crate::platforms::other::methods::arguments::RequestBodyOptions;
 pub(crate) use crate::platforms::other::methods::arguments::ToLineProtocolOptions;
@@ -8,6 +7,7 @@ use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
 use persona_exporter_types::metrics::ProcessInfo;
 use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
+use std::collections::BTreeMap;
 use surf::post;
 use tracing::{debug, error, info};
 use url::Url;
@@ -98,7 +98,8 @@ pub fn build_request_body(options: &RequestBodyOptions) -> surf::RequestBuilder 
         query_params.insert(params.key.clone(), params.value.clone());
     }
     let mut request = post(total_url)
-        .query(&query_params).unwrap()
+        .query(&query_params)
+        .unwrap()
         .header(http::header::HOST.as_str(), &options.host)
         .header(http::header::CONNECTION.as_str(), "close");
 
@@ -108,7 +109,6 @@ pub fn build_request_body(options: &RequestBodyOptions) -> surf::RequestBuilder 
     }
 
     request
-
 }
 
 pub async fn send_request(request: surf::RequestBuilder, _client: &surf::Client) {
@@ -118,8 +118,15 @@ pub async fn send_request(request: surf::RequestBuilder, _client: &surf::Client)
         Ok(mut success_response) => {
             let response_status = success_response.status();
             debug!("{:#?}", success_response);
-            info!("{}", success_response.body_string().await.unwrap_or_default());
-            info!("Response status: {} \"{}\"", response_status as u16, response_status.canonical_reason());
+            info!(
+                "{}",
+                success_response.body_string().await.unwrap_or_default()
+            );
+            info!(
+                "Response status: {} \"{}\"",
+                response_status as u16,
+                response_status.canonical_reason()
+            );
         }
         Err(err) => {
             error!("Send error: {}", err)

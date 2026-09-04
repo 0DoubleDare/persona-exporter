@@ -32,10 +32,10 @@ fn main() {
             SendModel::Push => {
                 info!("Exporter work send model: PUSH");
                 other::collector::collect_metrics_for_os(config).await;
-            },
+            }
             SendModel::Pull => {
                 info!("Exporter work send model: PULL");
-            },
+            }
         }
     });
     info!("Exporter initialized");
