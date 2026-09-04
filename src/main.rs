@@ -1,4 +1,5 @@
 use persona_exporter::platforms::*;
+use std::env;
 #[cfg_attr(target_os = "none", no_std)]
 #[cfg_attr(target_os = "none", no_main)]
 #[cfg(target_os = "none")]
@@ -9,11 +10,33 @@ async fn main(spawner: embassy_executor::Spawner) {
 
 #[cfg(not(target_os = "none"))]
 use mimalloc::MiMalloc;
-
+use persona_exporter::config::SendModel;
+use persona_exporter::platforms::other::methods::{initial_tracing, load_config};
+use tracing::info;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-#[tokio::main]
-async fn main() {
-    other::collector::collect_metrics_for_os().await;
+fn main() {
+    let debug_mode: bool = env::var("DEBUG")
+        .unwrap_or_else(|_| "true".to_string())
+        .parse()
+        .unwrap_or(true);
+
+    initial_tracing(debug_mode);
+
+    let config = load_config();
+    info!("Success initial configuration: {:#?}", config);
+
+    smol::block_on(async {
+        match config.agent.send_model {
+            SendModel::Push => {
+                info!("Exporter work send model: PUSH");
+                other::collector::collect_metrics_for_os(config).await;
+            }
+            SendModel::Pull => {
+                info!("Exporter work send model: PULL");
+            }
+        }
+    });
+    info!("Exporter initialized");
 }

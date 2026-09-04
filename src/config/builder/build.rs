@@ -16,7 +16,7 @@ impl AgentConfigFile {
                     dirs::config_dir().unwrap_or_default()
                 }
             });
-        let config_path = config_directory.join("config.toml");
+        let config_path = config_directory.join("config.yaml");
 
         info!("Current config directory: {:?}", config_directory);
         info!("You might change config directory through env var 'PERSONA_EXPORTER_CONFIG_DIR'");
@@ -24,6 +24,7 @@ impl AgentConfigFile {
 
         Config::builder()
             .add_source(Config::try_from(&Self::default())?)
+            // .add_source(File::from_str(config_path.as_os_str().to_str().unwrap(), FileFormat::Yaml))
             .add_source(TemplatedFile::with_name(config_path).required(false))
             .add_source(config::Environment::with_prefix("PE").separator("__"))
             .build()?
@@ -39,10 +40,16 @@ impl Default for AgentConfigFile {
                 data_type: DataType::default(),
             },
             server: ServerSection {
-                url: "https://example.com".to_string(),
-                retries_connection: None,
-                get_params: Vec::new(),
-                http_headers: Vec::new(),
+                push: SectionPushModel {
+                    url: "https://example.com".to_string(),
+                    retries_connection: None,
+                    url_params: vec![],
+                    http_headers: vec![],
+                },
+                pull: SectionPullModel {
+                    route: "metrics".to_string(),
+                    host: "localhost".to_string(),
+                },
             },
             metrics: MetricsConfig {
                 processes: ProcessListConfig {

@@ -1,14 +1,16 @@
-pub mod types;
+pub mod arguments;
 
 use crate::config::AgentConfigFile;
-use crate::platforms::other::methods::types::RequestBodyOptions;
-pub(crate) use crate::platforms::other::methods::types::ToLineProtocolOptions;
+use crate::platforms::other::methods::arguments::RequestBodyOptions;
+pub(crate) use crate::platforms::other::methods::arguments::ToLineProtocolOptions;
 use influxdb_line_protocol::LineProtocolBuilder;
 use influxdb_line_protocol::builder::AfterField;
 use persona_exporter_types::metrics::ProcessInfo;
 use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
-use reqwest::RequestBuilder;
+use std::collections::BTreeMap;
+use surf::post;
 use tracing::{debug, error, info};
+use url::Url;
 
 pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolOptions) -> Vec<u8> {
     let lines: [LineProtocolBuilder<Vec<u8>, AfterField>; 5] = [
@@ -68,45 +70,63 @@ pub fn collect_metrics_as_line_protocol(metrics: ToLineProtocolOptions) -> Vec<u
     .concat()
 }
 
-pub fn build_request_body(options: &RequestBodyOptions) -> RequestBuilder {
-    let get_pairs: Vec<(&str, &str)> = options
-        .get_params
-        .iter()
-        .map(|p| (p.key.as_str(), p.value.as_str()))
-        .collect();
-    let base = options.client.post(&options.url).query(&get_pairs);
-    options
-        .headers
-        .iter()
-        .fold(base, |acc, header| acc.header(&header.key, &header.value))
+pub fn build_request_body(options: &RequestBodyOptions) -> surf::RequestBuilder {
+    let total_url = options.url.clone();
+
+    // if !options.get_params.is_empty() {
+    //     let mut query_string = String::new();
+    //     let get_url_pairs = form_urlencoded::Serializer::new(&mut query_string);
+    //
+    //     options
+    //         .get_params
+    //         .iter()
+    //         .fold(get_url_pairs, |mut acc, get_param| {
+    //             acc.append_pair(get_param.key.as_str(), get_param.value.as_str());
+    //             acc
+    //         })
+    //         .finish();
+    //     total_url = format!("{}?{}", total_url, query_string);
+    // }
+    // let headers: Vec<(&str, &str)> = options
+    //     .headers
+    //     .iter()
+    //     .map(|h| (h.key.as_str(), h.value.as_str()))
+    //     .collect();
+
+    let mut query_params: BTreeMap<String, String> = BTreeMap::new();
+    for params in &options.get_params {
+        query_params.insert(params.key.clone(), params.value.clone());
+    }
+    let mut request = post(total_url)
+        .query(&query_params)
+        .unwrap()
+        .header(http::header::HOST.as_str(), &options.host)
+        .header(http::header::CONNECTION.as_str(), "close");
+
+    info!("{:#?}", request);
+    for header in &options.headers {
+        request = request.header(header.key.as_str(), header.value.as_str());
+    }
+
+    request
 }
 
-pub async fn send_request(request: RequestBuilder) {
+pub async fn send_request(request: surf::RequestBuilder, _client: &surf::Client) {
     let response = request.send().await;
 
     match response {
-        Ok(response) => {
-            let response_status = response.status();
-            let status_code_type = response_status.as_u16() / 100;
-            match status_code_type {
-                4 => {
-                    error!("What is wrong on the client side: {}", response_status);
-                }
-                5 => {
-                    error!("What is wrong on the server side: {}", response_status);
-                }
-                _ => {
-                    info!("Positive server response: {}", response_status);
-                }
-            }
-            debug!("{:#?}", response);
-            debug!(
+        Ok(mut success_response) => {
+            let response_status = success_response.status();
+            debug!("{:#?}", success_response);
+            info!(
                 "{}",
-                response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Body JSON is empty".to_string())
-            )
+                success_response.body_string().await.unwrap_or_default()
+            );
+            info!(
+                "Response status: {} \"{}\"",
+                response_status as u16,
+                response_status.canonical_reason()
+            );
         }
         Err(err) => {
             error!("Send error: {}", err)
@@ -114,7 +134,7 @@ pub async fn send_request(request: RequestBuilder) {
     }
 }
 
-pub fn load_config_file() -> AgentConfigFile {
+pub fn load_config() -> AgentConfigFile {
     AgentConfigFile::new().unwrap_or_else(|err| {
         error!("Something is wrong in your config file");
         panic!("{}", err);
@@ -126,3 +146,12 @@ pub fn initial_tracing(debug: bool) {
         .with_env_filter(if debug { "debug" } else { "info" })
         .init();
 }
+
+pub fn get_host(url: &str) -> String {
+    if let Ok(parsed_url) = Url::parse(url) {
+        return parsed_url.host_str().unwrap_or("localhost").to_string();
+    };
+    "incorrect_url".to_string()
+}
+
+// pub fn parse_cli_arguments()

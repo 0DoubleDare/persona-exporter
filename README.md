@@ -6,7 +6,7 @@
 ---
 
 ## Описание
-Легковесный экспортер метрик написанный полностью на Rust.
+Легковесный экспортер метрик написанный на Rust работающий по push-модели.
 - [Работа с экспортером](#работа-с-экспортером)
   - [Запуск сервиса systemd](#запуск-сервиса)
   - [Первичная настройка](#первичная-настройка)
@@ -41,7 +41,7 @@ journalctl -u persona-exporter.service -f
 ---
 
 ### Первичная настройка
-Основной файл конфигурации **config.toml** по умолчанию хранится в ```/etc/persona-exporter/config.toml```.
+Основной файл конфигурации **config.yaml** по умолчанию хранится в ```/etc/persona-exporter/config.toml```.
 Рабочую директорию можно изменить через переменную окружения ```PERSONA_EXPORTER_CONFIG_DIR```.
 К примеру 
 ```bash
@@ -389,100 +389,91 @@ export PERSONA_EXPORTER_CONFIG_DIR="~/.config/persona-exporter/"
 
 ### Конфигурация
 Теперь подробнее про конфигурацию, как упоминалось ранее по умолчанию файл конфигурации
-находится в `/etc/persona-exporter/config.toml` и можно изменить директорию с помощью
+находится в `/etc/persona-exporter/config.yaml` и можно изменить директорию с помощью
 переменной окружения `PERSONA_EXPORTER_CONFIG_DIR`.
 Ниже будут описаны все поля конфигурации. Для наглядности мы опишем 
 вполне работающую конфигурацию для Influx DB v2
-```toml
-[agent]
-# Интервал отправки метрик
-send_interval = 10
-# Формат данных которые будут отправляться на сервер.
-# "json" / "line_protocol"
-data_type = "line_protocol"
+```yaml
+agent:
+  # Интервал отправки метрик
+  send_interval: 10
+  # Формат данных которые будут отправляться на сервер.
+  # "json" / "line_protocol"
+  data_type: "line_protocol"
 
-[server]
-# Целевой сервер (url)
-url = "http://localhost:8086/api/v2/write"
-# Заголовки которые будут переданы в тело запроса, нужно к примеру
-# для токенов авторизации
-http_headers = [
-    { key = "Authorization", value = "Token ${INFLUX_DB_TOKEN}" },
-    { key = "Content-Type", value = "text-plain; charset=utf-8" }
-]
-# Дополнительно устанавливаем get-параметры которые требует Influx DB v2
-get_params = [
-    { key = "org", value = "my-great-company" },
-    { key = "bucket", value = "org-server-metrics" },
-    { key = "precision", value = "ns" }
-]
+server:
+  push:
+    # Целевой сервер (url)
+    url: "http://localhost:8086/api/v2/write"
+    # Заголовки которые будут переданы в тело запроса, нужно к примеру
+    # для токенов авторизации
+    http_headers:
+      - key: "Authorization"
+        value: "Token ${INFLUX_DB_TOKEN}"
+      - key: "Content-Type"
+        value: "text-plain; charset=utf-8"
+    # Дополнительно устанавливаем URL переменные которые требует Influx DB v2
+    # Они добавятся в конце ващего URL
+    url_params:
+      # Указываем нашу организацию
+      - key: "org"
+        value: "my-great-company"
+      # Указываем название БД
+      - key: "bucket"
+        value: "org-server-metrics"
+      # Указываем в каком формате UNIX-время, ns - наносекунды
+      - key: "precision"
+        value: "ns"
 
 # Далее по необходиомости описываем конкретные категории метрик
-[metrics.cpu]
-enable = true
+metrics:
+  cpu:
+    enable: true
 
-[metrics.system]
-enable = true
+  system:
+    enable: true
 
-[metrics.processes]
-enable = true
-# Размер списка процессов
-process_limit = 5
-# Критерий сортировки процессов
-sort_by = "cpu_usage" # / "memory" / "virtual_memory" / "start_time" / "run_time"
+  processes:
+    enable: true
+    # Размер списка процессов (не считая информацию о самом экспортере)
+    process_limit: 5
+    # Критерий сортировки процессов
+    sort_by: "cpu_usage" # / "memory" / "virtual_memory" / "start_time" / "run_time"
 
-[metrics.disks]
-enable = true
+  disks:
+    enable: true
 
-[metrics.components]
-enable = true
+  components:
+    enable: true
 
-[metrics.network]
-enable = true
+  network:
+    enable: true
 
-[metrics.memory]
-enable = true
+  memory:
+    enable: true
 ```
 
 ---
 
 ## Планы развития
+Не всё что находистя в списке будет реализовано на 100%. Некоторые 
+фичи так могут и не быть реализованы
 
 - [ ] Форматы
-  - [X] Поддержка Line Protocol для InfluxDB
+  - [X] Поддержка Line Protocol для InfluxDB v2
   - [X] Поддержка JSON 
-  - [ ] Поддержка OpenMetrics 
+  - [ ] Поддержка стандарта OpenMetrics 
 - [ ] Функционал
     - [ ] Конфигурация
       - [ ] Добавление pull модели
-      - [ ] Добавление специфичных настроек метрик. 
-        К примеру добавление игнорируемых интерфейсов при сборе метрик по сети и т.д.
+      - [ ] Добавление списка игнорируемых сетевых интерфейсов
+      - [ ] Добавление игнорируемый mount-поинтов для диска
       - [X] Возможность подставлять в конфигурацию переменные окружения вашей системы
+      - [X] Перейти с .toml в .yaml
     - [ ] Метрики
-      - [ ] Добавить топ-N процессов в системе по использованию процессора, памяти и т.д.
-      - [ ] Оптимизировать работу с памятью при сборе 
-      - [ ] Добавить возможность преобразования метрик. К примеру вместо сырых байт некоторые метрики будут преобразоваться 
-      в понятный формат 
+      - [ ] Добавить топ-N процессов в системе по использованию процессора, памяти и т.д. в одном теле метрик
     - [ ] Поддерживаемые платформы
-      - [ ] Windows (**В далеком будущем**)
-        - [ ] Windows Server
-        - [ ] Windows 10
-        - [ ] Windows 11
+      - [ ] Windows Server
       - [ ] Linux
-        - [ ] Репозитории пакетов
-          - [ ] `APT` (Debian, Ubuntu)
-          - [ ] `AUR` (ArchLinux)
-          - [ ] `nixpkgs` (NixOS)
-          - [ ] `EPEL` (RadHat, AlmaLinux)
-          - [ ] `Copl` (RadHat, Fedora)
-        - [ ] Дистрибутивы
-          - [X] Ubuntu
-          - [X] Debian
-          - [ ] NixOS
-          - [ ] RedHat
-          - [ ] Fedora
-          - [ ] AlmaLinux
-      - [ ] MacOS (**В далеком будущем**)
       - [ ] Микроконтроллеры (**no_std**, *версии устройств будут конкретизированы позже*)
-        - [ ] Raspberry Pi
         - [ ] Esp32 
