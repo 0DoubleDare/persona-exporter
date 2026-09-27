@@ -99,7 +99,10 @@ impl Default for AgentConfigFile {
                 },
             },
             metrics: MetricsConfig {
-                global_tags: HashMap::from([("hostname".to_compact_string(), "name-your-server".to_compact_string())]),
+                global_tags: HashMap::from([(
+                    "hostname".to_compact_string(),
+                    "name-your-server".to_compact_string(),
+                )]),
                 processes: ProcessListConfig {
                     settings: CommonMetricSetting::default(),
                     process_limit: 5,

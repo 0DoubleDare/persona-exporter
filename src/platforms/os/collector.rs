@@ -136,11 +136,11 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                 if config.metrics.processes.include_exporter_metrics
                     && let (Ok(pid), Some(self_metrics)) =
                         (get_current_pid(), &mut process_list_buf.exporter_metrics)
-                    {
-                        self_metrics.clear_dynamic();
-                        let process = get_process_by_id(s, pid);
-                        write_process_info(process, self_metrics);
-                    }
+                {
+                    self_metrics.clear_dynamic();
+                    let process = get_process_by_id(s, pid);
+                    write_process_info(process, self_metrics);
+                }
             }
         }
 

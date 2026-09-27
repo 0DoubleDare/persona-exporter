@@ -1,5 +1,5 @@
-mod enums;
 mod additional_types;
+mod enums;
 mod top_level_types;
 
 use compact_str::CompactString;

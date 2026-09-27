@@ -22,5 +22,5 @@ pub struct MainCliArguments {
     pub config_path: Option<CompactString>,
     #[argh(switch, short = 't')]
     /// validate configuration
-    pub config_test: bool
+    pub config_test: bool,
 }

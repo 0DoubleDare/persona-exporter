@@ -6,7 +6,6 @@ use sysinfo::{Pid, System};
 
 pub fn get_process_by_id(sys: &System, pid: Pid) -> ProcessInfo {
     let system_process = sys.process(pid).unwrap();
-    
 
     ProcessInfo::from_with_cpu(system_process, sys.cpus().len() as f32)
 }

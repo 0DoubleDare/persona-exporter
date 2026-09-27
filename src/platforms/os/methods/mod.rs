@@ -18,7 +18,7 @@ use persona_exporter_types::metrics::structs::system::SystemInfo;
 use persona_exporter_types::traits::line_protocol::{FinishLineProtocol, FromWithMeasurement};
 use std::collections::BTreeMap;
 use surf::post;
-use tracing::{debug, error, info, Level};
+use tracing::{Level, debug, error, info};
 use url::Url;
 
 pub fn collect_metrics_as_line_protocol(
