@@ -91,7 +91,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let process_limit = config.metrics.processes.process_limit;
     let global_tags = config.metrics.global_tags;
     // let mut time: i64;
-    while let Some(_) = interval.next().await {
+    while interval.next().await.is_some() {
         info!("Collect metrics...");
 
         // Метрики требующий sysinfo::System
@@ -133,15 +133,14 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                 process_list_buf.process_list.truncate(process_limit);
 
                 // Отдельная информация о самом экспортере
-                if config.metrics.processes.include_exporter_metrics {
-                    if let (Ok(pid), Some(self_metrics)) =
+                if config.metrics.processes.include_exporter_metrics
+                    && let (Ok(pid), Some(self_metrics)) =
                         (get_current_pid(), &mut process_list_buf.exporter_metrics)
                     {
                         self_metrics.clear_dynamic();
                         let process = get_process_by_id(s, pid);
                         write_process_info(process, self_metrics);
                     }
-                }
             }
         }
 

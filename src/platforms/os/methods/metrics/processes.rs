@@ -6,9 +6,9 @@ use sysinfo::{Pid, System};
 
 pub fn get_process_by_id(sys: &System, pid: Pid) -> ProcessInfo {
     let system_process = sys.process(pid).unwrap();
-    let process = ProcessInfo::from_with_cpu(system_process, sys.cpus().len() as f32);
+    
 
-    process
+    ProcessInfo::from_with_cpu(system_process, sys.cpus().len() as f32)
 }
 
 pub fn get_sort_closure(
