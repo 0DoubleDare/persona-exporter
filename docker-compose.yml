@@ -1,0 +1,11 @@
+version: "1.0"
+services:
+  persona-exporter:
+    container_name: persona-exporter
+    network_mode: "host"
+    pid: "host"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    restart: unless-stopped

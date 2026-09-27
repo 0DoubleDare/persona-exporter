@@ -1,0 +1,47 @@
+server:
+  push:
+    url: "https://example.com"
+    http_headers:
+      - key: "Content-Type"
+        value: "application/json"
+    # Your url params, out: https://example.com?example=true&user_id=3
+    url_params:
+      - key: "example"
+        value: "true"
+      - key: "user_id"
+        value: "3"
+    # Metric sending interval in seconds
+    send_interval: 5
+  # pull:
+    # Not available
+
+agent:
+  # "line_protocol" "json"
+  data_type: "json"
+  # "push" / "pull" (soon)
+  send_model: "push"
+
+metrics:
+  global_tags:
+    hostname: "name-your-server-please"
+    env: "test-servers"
+  cpu:
+    enabled: true
+  memory:
+    enabled: true
+  system:
+    enabled: true
+  disks:
+    enabled: true
+  processes:
+    enabled: true
+    # Максимальный размер списка процессов (не считая информации о самом экспортере)
+    process_limit: 5
+    include_exporter_metrics: true
+    remove_dead_processes: true
+    # "cpu_usage" / "memory" / "virtual_memory" / "run_time" / "start_time"
+    sort_by: "cpu_usage"
+  networks:
+    enabled: true
+  components:
+    enabled: true

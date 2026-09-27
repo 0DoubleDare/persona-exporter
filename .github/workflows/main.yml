@@ -5,6 +5,14 @@ on:
     branches:
       - develop
       - main
+      - unstable
+      - release-candidate
+  pull_request:
+    branches:
+      - develop
+      - main
+      - unstable
+      - release-candidate
 
 jobs:
   test:
@@ -18,4 +26,7 @@ jobs:
   release:
     if: github.ref_name == 'main'
     needs: build
+    permissions:
+      contents: write
+    secrets: inherit
     uses: ./.github/workflows/release.yml

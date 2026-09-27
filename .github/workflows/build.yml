@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     name: Build project fot OSs
-    runs-on: ${{ matrics.runs-on }}
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       fail-fast: true
       matrix:
