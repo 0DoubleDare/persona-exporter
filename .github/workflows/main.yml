@@ -5,10 +5,14 @@ on:
     branches:
       - develop
       - main
+      - unstable
+      - release-candidate
   pull_request:
     branches:
       - develop
       - main
+      - unstable
+      - release-candidate
 
 jobs:
   test:
@@ -24,4 +28,5 @@ jobs:
     needs: build
     permissions:
       contents: write
+    secrets: inherit
     uses: ./.github/workflows/release.yml

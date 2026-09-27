@@ -1,5 +1,5 @@
 # Persona Exporter
-[![Build and test](https://github.com/0DoubleDare/persona-exporter/actions/workflows/main.yml/badge.svg)](https://github.com/0DoubleDare/persona-exporter/actions/workflows/main.yml)
+[![Build](https://github.com/0DoubleDare/persona-exporter/actions/workflows/build.yml/badge.svg)](https://github.com/0DoubleDare/persona-exporter/actions/workflows/main.yml)
 ![GitHub repo size](https://img.shields.io/github/repo-size/0DoubleDare/persona-exporter)
 ![GitHub License](https://img.shields.io/github/license/0DoubleDare/persona-exporter)
 

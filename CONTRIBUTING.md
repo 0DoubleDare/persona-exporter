@@ -16,10 +16,11 @@ ready for widespread use, but still requires feedback.
 Create your branches using the 'purpose/functionality' format.
 
 **Purpose levels:**
-- **feature** for new features
-- **bugfix** for bug fixes
-- **docs** for documentation
-- **refactoring** for refactoring (improving and optimizing) existing code
+- **feature** For new features
+- **bugfix** For bug fixes
+- **docs** For documentation
+- **refactoring** For refactoring (improving and optimizing) existing code
+- **experimental** For experimental features that might not appear in future updates.
 
 **Example:** "*feature/my-branch*", "*docs/update-system-module*"
 
