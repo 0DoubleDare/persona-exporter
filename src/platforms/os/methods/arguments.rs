@@ -1,6 +1,4 @@
 use crate::config::{AgentConfigFile, HeaderField, ParamField, ProcessSortBy};
-use surf::Client;
-use sysinfo::{CpuRefreshKind, DiskRefreshKind, MemoryRefreshKind, ProcessRefreshKind, UpdateKind};
 use persona_exporter_types::metrics::structs::components::ComponentListInfo;
 use persona_exporter_types::metrics::structs::cpu::CpuListInfo;
 use persona_exporter_types::metrics::structs::disk::StorageListInfo;
@@ -9,6 +7,8 @@ use persona_exporter_types::metrics::structs::network::NetworkInfo;
 use persona_exporter_types::metrics::structs::processes::ProcessListInfo;
 use persona_exporter_types::metrics::structs::server::ServerMetrics;
 use persona_exporter_types::metrics::structs::system::SystemInfo;
+use surf::Client;
+use sysinfo::{CpuRefreshKind, DiskRefreshKind, MemoryRefreshKind, ProcessRefreshKind, UpdateKind};
 
 #[derive(Default)]
 pub struct ToLineProtocolOptions {
@@ -93,8 +93,7 @@ impl RefreshKindContext {
                 .with_cpu()
                 .with_disk_usage()
         });
-        
-     
+
         RefreshKindContext {
             process_refresh_kind,
             disk_refresh_kind: None,
@@ -103,4 +102,3 @@ impl RefreshKindContext {
         }
     }
 }
-

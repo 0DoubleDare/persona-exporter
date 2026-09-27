@@ -1,7 +1,7 @@
 use compact_str::ToCompactString;
 use persona_exporter_types::DEFAULT_UNKNOWN_MESSAGE;
-use sysinfo::Components;
 use persona_exporter_types::metrics::structs::components::{ComponentInfo, ComponentListInfo};
+use sysinfo::Components;
 
 pub fn collect_components_metrics(
     components: &mut Components,
@@ -12,7 +12,10 @@ pub fn collect_components_metrics(
 
     components.iter().for_each(|c| {
         components_list_buffer.components.push(ComponentInfo {
-            id: c.id().unwrap_or(DEFAULT_UNKNOWN_MESSAGE).to_compact_string(),
+            id: c
+                .id()
+                .unwrap_or(DEFAULT_UNKNOWN_MESSAGE)
+                .to_compact_string(),
             name: c.label().to_compact_string(),
             temp: c.temperature().unwrap_or(0.0),
             critical_temp: c.critical().unwrap_or(0.0),

@@ -1,7 +1,7 @@
 use compact_str::ToCompactString;
 use persona_exporter_types::DEFAULT_UNKNOWN_MESSAGE;
-use sysinfo::System;
 use persona_exporter_types::metrics::structs::system::{LoadAverage, SystemInfo};
+use sysinfo::System;
 
 pub fn collect_system_metrics(system_metrics_buffer: &mut SystemInfo) {
     system_metrics_buffer

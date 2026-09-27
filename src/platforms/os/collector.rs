@@ -1,25 +1,27 @@
 use crate::config::{AgentConfigFile, DataType};
 use crate::platforms::os::methods::metrics::processes::*;
 
-use crate::platforms::os::methods::arguments::{Buffers, RefreshKindContext, RequestBodyOptions, SystemContext};
+use crate::platforms::os::methods::arguments::{
+    Buffers, RefreshKindContext, RequestBodyOptions, SystemContext,
+};
 use crate::platforms::os::methods::{
     build_request_body, collect_metrics_as_line_protocol, create_metrics_struct_by_config,
     get_host, send_request,
 };
 
-use persona_exporter_types::metrics::traits::Clear;
-use std::time::{Duration, SystemTime};
-use smol::stream::StreamExt;
-use surf::{Client, RequestBuilder};
-use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System, get_current_pid};
-use tracing::{debug, info};
-use url::Url;
 use crate::platforms::os::methods::metrics::components::collect_components_metrics;
 use crate::platforms::os::methods::metrics::cpu::collect_cpus_metrics;
 use crate::platforms::os::methods::metrics::disk::collect_storage_list_metrics;
 use crate::platforms::os::methods::metrics::memory::collect_memory_metrics;
 use crate::platforms::os::methods::metrics::network::collect_network_metrics;
 use crate::platforms::os::methods::metrics::system::collect_system_metrics;
+use persona_exporter_types::metrics::traits::Clear;
+use smol::stream::StreamExt;
+use std::time::{Duration, SystemTime};
+use surf::{Client, RequestBuilder};
+use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System, get_current_pid};
+use tracing::{debug, info};
+use url::Url;
 
 pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     // CPU, Memory, Processes & System
@@ -28,11 +30,9 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
         || config.metrics.processes.settings.enabled
         || config.metrics.processes.include_exporter_metrics
         || config.metrics.system.settings.enabled)
-        .then(|| {
-           SystemContext {
-               system_snapshot: System::new(),
-               refresh_kinds: RefreshKindContext::new(&config),
-           }
+        .then(|| SystemContext {
+            system_snapshot: System::new(),
+            refresh_kinds: RefreshKindContext::new(&config),
         });
 
     let mut disks = config
@@ -64,10 +64,12 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let additional_headers = &config.server.push.http_headers;
     let get_params = &config.server.push.url_params;
     let target_url = &config.server.push.url;
-    let mut interval = smol::Timer::interval(Duration::from_secs(config.agent.send_interval));
+    let await_seconds = config.server.push.send_interval;
+    let mut interval = smol::Timer::interval(Duration::from_secs(await_seconds));
 
     let client: Client = surf::Config::new()
         .set_base_url(Url::parse(target_url).unwrap())
+        .set_timeout(Some(Duration::from_secs(64)))
         .try_into()
         .unwrap();
 
@@ -87,34 +89,38 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let physical_core_count = System::physical_core_count().unwrap_or(0);
     let sort_by = get_sort_closure(&config.metrics.processes.sort_by);
     let process_limit = config.metrics.processes.process_limit;
+    let global_tags = config.metrics.global_tags;
     // let mut time: i64;
     while let Some(_) = interval.next().await {
         info!("Collect metrics...");
 
         // Метрики требующий sysinfo::System
-        if let Some(ref mut sys_context ) = system_context {
+        if let Some(ref mut sys_context) = system_context {
             let s = &mut sys_context.system_snapshot;
             // Здесь не нужна проверка, включена ли та или иная секция метрик в конфиге. Так как если выключена
             // То buffers.metrics.memory будет равнятся None. Такое поведение заложено ещё в инициализации структуры ServerMetrics
-            if let Some(ref mut mem_buf) = buffers.metrics.memory  {
+            if let Some(ref mut mem_buf) = buffers.metrics.memory {
                 s.refresh_memory();
                 // mem_buf.clear_dynamic();
                 collect_memory_metrics(s, mem_buf);
             }
-            if let Some(ref mut cpu_buf) = buffers.metrics.cpu  {
+            if let Some(ref mut cpu_buf) = buffers.metrics.cpu {
                 s.refresh_cpu_all();
                 cpu_buf.clear_dynamic();
                 collect_cpus_metrics(s, physical_core_count, cpu_buf);
             }
-            if let Some(ref mut system_buf) = buffers.metrics.system  {
+            if let Some(ref mut system_buf) = buffers.metrics.system {
                 system_buf.clear_dynamic();
                 collect_system_metrics(system_buf);
             }
-            if let (Some(process_list_buf), Some(refresh_kind)) = (&mut buffers.metrics.process_list, sys_context.refresh_kinds.process_refresh_kind)  {
+            if let (Some(process_list_buf), Some(refresh_kind)) = (
+                &mut buffers.metrics.process_list,
+                sys_context.refresh_kinds.process_refresh_kind,
+            ) {
                 s.refresh_processes_specifics(
                     ProcessesToUpdate::All,
                     config.metrics.processes.remove_dead_processes,
-                    refresh_kind
+                    refresh_kind,
                 );
                 // s.refresh_processes(ProcessesToUpdate::All, false);
                 process_list_buf.clear_dynamic();
@@ -128,7 +134,9 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
 
                 // Отдельная информация о самом экспортере
                 if config.metrics.processes.include_exporter_metrics {
-                    if let (Ok(pid), Some(self_metrics)) = (get_current_pid(), &mut process_list_buf.exporter_metrics) {
+                    if let (Ok(pid), Some(self_metrics)) =
+                        (get_current_pid(), &mut process_list_buf.exporter_metrics)
+                    {
                         self_metrics.clear_dynamic();
                         let process = get_process_by_id(s, pid);
                         write_process_info(process, self_metrics);
@@ -164,7 +172,11 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
         match config.agent.data_type {
             DataType::LineProtocol => {
                 line_protocol_buffer.clear();
-                collect_metrics_as_line_protocol(&buffers.metrics, &mut line_protocol_buffer);
+                collect_metrics_as_line_protocol(
+                    &buffers.metrics,
+                    &mut line_protocol_buffer,
+                    &global_tags,
+                );
 
                 // line_protocol_buffer = String::from_utf8(collect_metrics_as_line_protocol(&line_protocol_options).to_vec()).unwrap_or_default();
                 info!("Sending data to a specified URL",);
@@ -186,6 +198,6 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
         }
 
         send_request(request, &request_options.client).await;
-        info!("Next metrics created after {} seconds", config.agent.send_interval);
+        info!("Next metrics created after {} seconds", await_seconds);
     }
 }

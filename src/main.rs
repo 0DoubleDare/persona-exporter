@@ -10,9 +10,9 @@ async fn main(spawner: embassy_executor::Spawner) {
 
 #[cfg(not(target_os = "none"))]
 use mimalloc::MiMalloc;
+use persona_exporter::config::{MainCliArguments, SendModel};
 use persona_exporter::platforms::os::methods::{initial_tracing, load_config};
 use tracing::info;
-use persona_exporter::config::{MainCliArguments, SendModel};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -21,7 +21,7 @@ fn main() {
 
     initial_tracing(args.verbose);
 
-    let config = load_config(args.config);
+    let config = load_config(args.config_path);
     info!("Success initial configuration: {:#?}", config);
 
     smol::block_on(async {

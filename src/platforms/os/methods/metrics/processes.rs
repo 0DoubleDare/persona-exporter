@@ -1,8 +1,8 @@
-use std::cmp::Ordering;
-use sysinfo::{Pid, System};
+use crate::config::ProcessSortBy;
 use persona_exporter_types::metrics::structs::processes::ProcessInfo;
 use persona_exporter_types::metrics::sysinfo::processes::FromWithNormalizeCpu;
-use crate::config::ProcessSortBy;
+use std::cmp::Ordering;
+use sysinfo::{Pid, System};
 
 pub fn get_process_by_id(sys: &System, pid: Pid) -> ProcessInfo {
     let system_process = sys.process(pid).unwrap();

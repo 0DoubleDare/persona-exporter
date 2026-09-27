@@ -10,7 +10,7 @@ server:
         value: "true"
       - key: "user_id"
         value: "3"
-    # default - 5
+    # Metric sending interval in seconds
     send_interval: 5
   # pull:
     # Not available
@@ -18,10 +18,13 @@ server:
 agent:
   # "line_protocol" "json"
   data_type: "json"
-  # "push" "pull" (soon)
+  # "push" / "pull" (soon)
   send_model: "push"
 
 metrics:
+  global_tags:
+    hostname: "name-your-server-please"
+    env: "test-servers"
   cpu:
     enabled: true
   memory:
@@ -32,6 +35,12 @@ metrics:
     enabled: true
   processes:
     enabled: true
+    # Максимальный размер списка процессов (не считая информации о самом экспортере)
+    process_limit: 5
+    include_exporter_metrics: true
+    remove_dead_processes: true
+    # "cpu_usage" / "memory" / "virtual_memory" / "run_time" / "start_time"
+    sort_by: "cpu_usage"
   networks:
     enabled: true
   components:

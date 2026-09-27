@@ -5,12 +5,8 @@ use crate::config::AgentConfigFile;
 use crate::platforms::os::methods::arguments::RequestBodyOptions;
 use influxdb_line_protocol::LineProtocolBuilder;
 // use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
-use persona_exporter_types::traits::line_protocol::{FinishLineProtocol, FromWithMeasurement};
-use std::collections::BTreeMap;
 use compact_str::CompactString;
-use surf::post;
-use tracing::{debug, error, info};
-use url::Url;
+use persona_exporter_types::metrics::line_protocol::GlobalTags;
 use persona_exporter_types::metrics::structs::components::ComponentListInfo;
 use persona_exporter_types::metrics::structs::cpu::CpuListInfo;
 use persona_exporter_types::metrics::structs::disk::StorageListInfo;
@@ -19,12 +15,21 @@ use persona_exporter_types::metrics::structs::network::NetworkInfo;
 use persona_exporter_types::metrics::structs::processes::{ProcessInfo, ProcessListInfo};
 use persona_exporter_types::metrics::structs::server::ServerMetrics;
 use persona_exporter_types::metrics::structs::system::SystemInfo;
+use persona_exporter_types::traits::line_protocol::{FinishLineProtocol, FromWithMeasurement};
+use std::collections::BTreeMap;
+use surf::post;
+use tracing::{debug, error, info, Level};
+use url::Url;
 
-pub fn collect_metrics_as_line_protocol(metrics: &ServerMetrics, line_buffer: &mut Vec<u8>) {
+pub fn collect_metrics_as_line_protocol(
+    metrics: &ServerMetrics,
+    line_buffer: &mut Vec<u8>,
+    global_tags: &GlobalTags,
+) {
     let time = metrics.time;
     if let Some(ref system) = metrics.system {
         line_buffer.extend_from_slice(
-            LineProtocolBuilder::from_with_name(system, "metrics_system")
+            LineProtocolBuilder::from_with_name(system, "metrics_system", global_tags)
                 .finish(time)
                 .as_slice(),
         );
@@ -32,9 +37,13 @@ pub fn collect_metrics_as_line_protocol(metrics: &ServerMetrics, line_buffer: &m
     if let Some(ref disk) = metrics.disk {
         for mount_point in disk.storage_list.iter() {
             line_buffer.extend_from_slice(
-                LineProtocolBuilder::from_with_name(mount_point, "metrics_storage_mount_point")
-                    .finish(time)
-                    .as_slice(),
+                LineProtocolBuilder::from_with_name(
+                    mount_point,
+                    "metrics_storage_mount_point",
+                    global_tags,
+                )
+                .finish(time)
+                .as_slice(),
             );
         }
         // disk.disk_list.iter().for_each(|d| {
@@ -47,20 +56,20 @@ pub fn collect_metrics_as_line_protocol(metrics: &ServerMetrics, line_buffer: &m
     }
     if let Some(ref network) = metrics.network {
         line_buffer.extend_from_slice(
-            LineProtocolBuilder::from_with_name(network, "metrics_network")
+            LineProtocolBuilder::from_with_name(network, "metrics_network", global_tags)
                 .finish(time)
                 .as_slice(),
         );
     }
     if let Some(ref cpu) = metrics.cpu {
         line_buffer.extend_from_slice(
-            LineProtocolBuilder::from_with_name(cpu, "metrics_cpu")
+            LineProtocolBuilder::from_with_name(cpu, "metrics_cpu", global_tags)
                 .finish(time)
                 .as_slice(),
         );
         cpu.cpu_cores.iter().for_each(|cpu_core| {
             line_buffer.extend_from_slice(
-                LineProtocolBuilder::from_with_name(cpu_core, "metrics_cpu_cores")
+                LineProtocolBuilder::from_with_name(cpu_core, "metrics_cpu_cores", global_tags)
                     .finish(time)
                     .as_slice(),
             );
@@ -68,7 +77,7 @@ pub fn collect_metrics_as_line_protocol(metrics: &ServerMetrics, line_buffer: &m
     }
     if let Some(ref memory) = metrics.memory {
         line_buffer.extend_from_slice(
-            LineProtocolBuilder::from_with_name(memory, "metrics_memory")
+            LineProtocolBuilder::from_with_name(memory, "metrics_memory", global_tags)
                 .finish(time)
                 .as_slice(),
         );
@@ -77,7 +86,7 @@ pub fn collect_metrics_as_line_protocol(metrics: &ServerMetrics, line_buffer: &m
     if let Some(ref component_list) = metrics.components {
         component_list.components.iter().for_each(|c| {
             line_buffer.extend_from_slice(
-                LineProtocolBuilder::from_with_name(c, "metrics_component_list")
+                LineProtocolBuilder::from_with_name(c, "metrics_component_list", global_tags)
                     .finish(time)
                     .as_slice(),
             );
@@ -86,16 +95,20 @@ pub fn collect_metrics_as_line_protocol(metrics: &ServerMetrics, line_buffer: &m
     if let Some(ref processes) = metrics.process_list {
         processes.process_list.iter().for_each(|p| {
             line_buffer.extend_from_slice(
-                LineProtocolBuilder::from_with_name(p, "metrics_process_list")
+                LineProtocolBuilder::from_with_name(p, "metrics_process_list", global_tags)
                     .finish(time)
                     .as_slice(),
             );
         });
         if let Some(ref self_metrics) = processes.exporter_metrics {
             line_buffer.extend_from_slice(
-                LineProtocolBuilder::from_with_name(self_metrics, "metrics_exporter_monitoring")
-                    .finish(time)
-                    .as_slice()
+                LineProtocolBuilder::from_with_name(
+                    self_metrics,
+                    "metrics_exporter_monitoring",
+                    global_tags,
+                )
+                .finish(time)
+                .as_slice(),
             );
         }
         // processes.exporter_metrics.iter().for_each(|self_process| {
@@ -179,12 +192,19 @@ pub fn load_config(override_config_path: Option<CompactString>) -> AgentConfigFi
     })
 }
 
-pub fn initial_tracing(debug: bool) {
+pub fn initial_tracing(log_level: u8) {
+    let level = match log_level {
+        1 => Level::INFO,
+        2 => Level::DEBUG,
+        3 => Level::TRACE,
+        _ => Level::WARN,
+    };
+
     tracing_subscriber::fmt()
         .compact()
         .without_time()
         .with_target(false)
-        .with_env_filter(if debug { "debug" } else { "info" })
+        .with_max_level(level)
         .init();
 }
 
@@ -208,8 +228,12 @@ pub fn create_metrics_struct_by_config(config: &AgentConfigFile) -> ServerMetric
             .processes
             .settings
             .enabled
-            .then( || ProcessListInfo {
-                exporter_metrics: config.metrics.processes.include_exporter_metrics.then(ProcessInfo::default),
+            .then(|| ProcessListInfo {
+                exporter_metrics: config
+                    .metrics
+                    .processes
+                    .include_exporter_metrics
+                    .then(ProcessInfo::default),
                 process_list: Vec::new(),
             }),
         memory: config

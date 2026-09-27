@@ -1,5 +1,13 @@
-use serde::{Deserialize, Serialize};
+mod enums;
+mod additional_types;
+mod top_level_types;
 
+use compact_str::CompactString;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+pub type HttpHeaders = HashMap<CompactString, CompactString>;
+pub type UrlParams = HashMap<CompactString, CompactString>;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentConfigFile {
     pub agent: AgentSection,
@@ -9,6 +17,9 @@ pub struct AgentConfigFile {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct MetricsConfig {
+    pub global_tags: HashMap<CompactString, CompactString>,
+    // #[serde(rename = "global")]
+    // pub global_config: GlobalMetricsConfig,
     pub cpu: CpuConfig,
     pub disks: DisksConfig,
     pub network: NetworkConfig,
@@ -17,6 +28,11 @@ pub struct MetricsConfig {
     pub memory: MemoryConfig,
     pub processes: ProcessListConfig,
 }
+
+// #[derive(Serialize, Deserialize, Debug, Default, Clone)]
+// pub struct GlobalMetricsConfig {
+//     pub tags: HashMap<CompactString, CompactString>,
+// }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ProcessListConfig {
@@ -27,6 +43,22 @@ pub struct ProcessListConfig {
     pub remove_dead_processes: bool,
     pub sort_by: ProcessSortBy,
     // pub sort_by: [Option<ProcessListSortConfig>; 5],
+}
+
+// Задел на будущее
+pub struct EnabledSortByProcessList {
+    pub cpu_usage: bool,
+    pub memory: bool,
+    pub virtual_memory: bool,
+    pub run_time: bool,
+    pub start_time: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub enum SortDirection {
+    #[default]
+    Desc,
+    Asc,
 }
 // #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 // pub struct ProcessListSortConfig {
@@ -74,7 +106,6 @@ pub struct SystemConfig {
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct AgentSection {
-    pub send_interval: u64,
     pub send_model: SendModel,
     pub data_type: DataType,
 }
@@ -102,10 +133,16 @@ pub struct SectionPullModel {
 pub struct SectionPushModel {
     pub url: String,
     pub retries_connection: Option<u32>,
+    pub send_interval: u64,
     #[serde(default)]
     pub url_params: Vec<ParamField>,
     #[serde(default)]
     pub http_headers: Vec<HeaderField>,
+
+    #[serde(default)]
+    pub http_headers_v2: HttpHeaders,
+    #[serde(default)]
+    pub url_params_v2: UrlParams,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

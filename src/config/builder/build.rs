@@ -1,10 +1,11 @@
 use crate::config::*;
+use compact_str::{CompactString, ToCompactString};
 use config::{Config, ConfigError};
 use config_shellexpand::TemplatedFile;
+use std::collections::HashMap;
 use std::env;
 use std::fs::{create_dir_all, write};
 use std::path::PathBuf;
-use compact_str::CompactString;
 use tracing::{info, warn};
 
 const CONFIG_FILENAME: &str = "config.yaml";
@@ -28,10 +29,10 @@ impl AgentConfigFile {
                                 env::var("ProgramData")
                                     .unwrap_or_else(|_| r"C:\Program Data".to_string()),
                             )
-                                .join("PersonaMetrics")
-                                .join("PersonaExporter")
+                            .join("PersonaMetrics")
+                            .join("PersonaExporter")
                         }
-                            .join(CONFIG_FILENAME)
+                        .join(CONFIG_FILENAME)
                     })
             }
         };
@@ -60,7 +61,9 @@ impl AgentConfigFile {
         }
 
         info!("You might change config path through env var 'PERSONA_EXPORTER_CONFIG_PATH'");
-        info!("Example (Linux): export PERSONA_EXPORTER_CONFIG_PATH=/home/alice/.config/myconfig.toml");
+        info!(
+            "Example (Linux): export PERSONA_EXPORTER_CONFIG_PATH=/home/alice/.config/myconfig.toml"
+        );
         info!("Current full config path: {:?}", config_path);
 
         Config::builder()
@@ -76,7 +79,6 @@ impl Default for AgentConfigFile {
     fn default() -> Self {
         AgentConfigFile {
             agent: AgentSection {
-                send_interval: 10,
                 send_model: SendModel::default(),
                 data_type: DataType::default(),
             },
@@ -84,8 +86,11 @@ impl Default for AgentConfigFile {
                 push: SectionPushModel {
                     url: "https://example.com".to_string(),
                     retries_connection: None,
-                    url_params: vec![],
-                    http_headers: vec![],
+                    send_interval: 5,
+                    url_params: Vec::new(),
+                    http_headers: Vec::new(),
+                    http_headers_v2: HashMap::new(),
+                    url_params_v2: HashMap::new(),
                 },
                 pull: SectionPullModel {
                     route: "metrics".to_string(),
@@ -94,10 +99,11 @@ impl Default for AgentConfigFile {
                 },
             },
             metrics: MetricsConfig {
+                global_tags: HashMap::from([("hostname".to_compact_string(), "name-your-server".to_compact_string())]),
                 processes: ProcessListConfig {
                     settings: CommonMetricSetting::default(),
                     process_limit: 5,
-                    include_exporter_metrics: false,
+                    include_exporter_metrics: true,
                     remove_dead_processes: true,
                     sort_by: ProcessSortBy::default(),
                 },

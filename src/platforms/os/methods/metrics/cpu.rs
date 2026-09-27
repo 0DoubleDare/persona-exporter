@@ -1,6 +1,6 @@
 use compact_str::ToCompactString;
-use sysinfo::System;
 use persona_exporter_types::metrics::structs::cpu::{CpuListInfo, CpuThreadInfo};
+use sysinfo::System;
 
 pub fn collect_cpus_metrics(
     sys: &System,
