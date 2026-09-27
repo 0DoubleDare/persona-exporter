@@ -62,7 +62,7 @@ impl AgentConfigFile {
 
         info!("You might change config path through env var 'PERSONA_EXPORTER_CONFIG_PATH'");
         info!(
-            "Example (Linux): export PERSONA_EXPORTER_CONFIG_PATH=/home/alice/.config/myconfig.toml"
+            "Example (Linux): export PERSONA_EXPORTER_CONFIG_PATH=/home/alice/.config/myconfig.yaml"
         );
         info!("Current full config path: {:?}", config_path);
 

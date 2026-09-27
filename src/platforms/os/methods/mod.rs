@@ -6,6 +6,7 @@ use crate::platforms::os::methods::arguments::RequestBodyOptions;
 use influxdb_line_protocol::LineProtocolBuilder;
 // use persona_exporter_types::traits::line_protocol::{FromWithMeasurement, IntoWithMeasurement};
 use compact_str::CompactString;
+use config::ConfigError;
 use persona_exporter_types::metrics::line_protocol::GlobalTags;
 use persona_exporter_types::metrics::structs::components::ComponentListInfo;
 use persona_exporter_types::metrics::structs::cpu::CpuListInfo;
@@ -185,11 +186,10 @@ pub async fn send_request(request: surf::RequestBuilder, _client: &surf::Client)
     }
 }
 
-pub fn load_config(override_config_path: Option<CompactString>) -> AgentConfigFile {
-    AgentConfigFile::new_with(override_config_path).unwrap_or_else(|err| {
-        error!("Something is wrong in your config file");
-        panic!("{}", err);
-    })
+pub fn load_config(
+    override_config_path: Option<CompactString>,
+) -> Result<AgentConfigFile, ConfigError> {
+    AgentConfigFile::new_with(override_config_path)
 }
 
 pub fn initial_tracing(log_level: u8) {

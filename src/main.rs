@@ -1,4 +1,5 @@
 use persona_exporter::platforms::*;
+use std::process::exit;
 
 #[cfg_attr(target_os = "none", no_std)]
 #[cfg_attr(target_os = "none", no_main)]
@@ -17,12 +18,30 @@ use tracing::info;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 fn main() {
+    println!(
+        "The exporter is running and collecting metrics. To enable logging, run the program with the `-v 2` flag."
+    );
+
     let args: MainCliArguments = argh::from_env();
+    let verbose_level = if args.config_test { 2 } else { args.verbose };
 
-    initial_tracing(args.verbose);
+    initial_tracing(verbose_level);
 
-    let config = load_config(args.config_path);
-    info!("Success initial configuration: {:#?}", config);
+    let config = match load_config(args.config_path) {
+        Ok(config) => {
+            info!("Config parsed successfully");
+            if args.config_test {
+                println!("OK: Configuration test passed");
+                exit(0);
+            }
+            config
+        }
+        Err(err) => {
+            println!("ERR: invalid config: {}", err);
+            exit(0);
+        }
+    };
+    info!("{:#?}", config);
 
     smol::block_on(async {
         match config.agent.send_model {
