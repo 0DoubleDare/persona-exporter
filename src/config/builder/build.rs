@@ -94,7 +94,7 @@ impl Default for AgentConfigFile {
                 },
                 pull: SectionPullModel {
                     route: "metrics".to_string(),
-                    hostname: "localhost".to_string(),
+                    server_hostname: "localhost".to_string(),
                     port: 3434,
                 },
             },

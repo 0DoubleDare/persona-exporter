@@ -14,8 +14,8 @@ reqwless = "0.14.0"
 
 # Crates for PC (Linux, Windows, MacOS)
 [target.'cfg(not(target_os = "none"))'.dependencies]
-persona-exporter-types = { path = "../persona-exporter-types", features = ["full"] }
-#persona-exporter-types = { version = "2.2.1", features = ["full"]}
+#persona-exporter-types = { path = "../persona-exporter-types", features = ["full"] }
+persona-exporter-types = { version = "3.0.0", features = ["full"]}
 
 influxdb-line-protocol = { version = "2.0.0" }
 sysinfo = { version = "0.39.3", features = ["system", "disk", "component", "network", "linux-netdevs"], default-features = false }
