@@ -6,7 +6,7 @@ use compact_str::CompactString;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub type HttpHeaders = HashMap<CompactString, CompactString>;
+pub type HttpHeaders = HashMap<String, String>;
 pub type UrlParams = HashMap<CompactString, CompactString>;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentConfigFile {

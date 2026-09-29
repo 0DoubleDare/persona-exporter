@@ -61,24 +61,34 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     //     system: sys,
     // };
 
-    let additional_headers = &config.server.push.http_headers;
-    let get_params = &config.server.push.url_params;
+    let additional_headers = &config.server.push.http_headers_v2;
+    let get_params = &config.server.push.url_params_v2;
     let target_url = &config.server.push.url;
     let await_seconds = config.server.push.send_interval;
     let mut interval = smol::Timer::interval(Duration::from_secs(await_seconds));
 
-    let client: Client = surf::Config::new()
-        .set_base_url(Url::parse(target_url).unwrap())
-        .set_timeout(Some(Duration::from_secs(64)))
-        .try_into()
-        .unwrap();
+    // let client: Client = surf::Config::new()
+    //     .set_base_url(Url::parse(target_url).unwrap())
+    //     .set_timeout(Some(Duration::from_secs(64)))
+    //     .try_into()
+    //     .unwrap();
+
+    let client_config = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(64)))
+        .build();
+    let mut client = ureq::Agent::new_with_config(client_config)
+        .post(target_url)
+        .query_pairs(get_params);
+    for (header, value) in additional_headers {
+        client = client.header(header, value);
+    }
 
     let request_options = RequestBodyOptions {
         client,
-        url: target_url.clone(),
-        host: get_host(target_url),
-        get_params: get_params.clone(),
-        headers: additional_headers.clone(),
+        url: target_url,
+        host: "".to_string(),
+        get_params: Default::default(),
+        headers: Default::default(),
     };
 
     let mut line_protocol_buffer: Vec<u8> = Vec::new();
@@ -92,7 +102,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let global_tags = config.metrics.global_tags;
     // let mut time: i64;
     while interval.next().await.is_some() {
-        info!("Collect metrics...");
+        info!("Next metrics created after {} seconds", await_seconds);
 
         // Метрики требующий sysinfo::System
         if let Some(ref mut sys_context) = system_context {
@@ -127,7 +137,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
 
                 // Информация о процессах
                 update_process_list_info(s, &mut process_list_buf.process_list);
-                //// Сортируем по заданной функции
+                //// Сортируем по заданной функции aka замыканию
                 process_list_buf.process_list.sort_unstable_by(&sort_by);
                 //// Обрезаем готовый массив
                 process_list_buf.process_list.truncate(process_limit);
@@ -167,7 +177,6 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
             .as_nanos() as i64;
 
         let mut request: RequestBuilder = build_request_body(&request_options);
-
         match config.agent.data_type {
             DataType::LineProtocol => {
                 line_protocol_buffer.clear();
@@ -177,26 +186,21 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                     &global_tags,
                 );
 
-                // line_protocol_buffer = String::from_utf8(collect_metrics_as_line_protocol(&line_protocol_options).to_vec()).unwrap_or_default();
                 info!("Sending data to a specified URL",);
                 debug!("{:#?}", String::from_utf8(line_protocol_buffer.clone()));
-                request = request
-                    // .header(http::header::CONTENT_LENGTH.as_str(), &line_protocol_buffer.len().to_string())
-                    .body_bytes(&line_protocol_buffer);
+                &line_protocol_buffer;
+                let request =
+                send_request(client, &line_protocol_buffer).await;
+
             }
             DataType::Json => {
                 info!("Machine metrics: {:#?}", buffers.metrics);
 
-                // let json_metrics = serde_json::to_string(&machine_metrics).expect("Failed to serialize to json");
                 let json_body = serde_json::json!(buffers.metrics);
 
-                request = request
-                    .body_json(&json_body)
-                    .expect("Failed to create request body");
+                send_request(&client, &json_body.to_string()).await;
             }
         }
 
-        send_request(request, &request_options.client).await;
-        info!("Next metrics created after {} seconds", await_seconds);
     }
 }

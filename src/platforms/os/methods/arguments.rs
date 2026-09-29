@@ -1,4 +1,4 @@
-use crate::config::{AgentConfigFile, HeaderField, ParamField, ProcessSortBy};
+use crate::config::{AgentConfigFile, HeaderField, HttpHeaders, ParamField, ProcessSortBy, UrlParams};
 use persona_exporter_types::metrics::structs::components::ComponentListInfo;
 use persona_exporter_types::metrics::structs::cpu::CpuListInfo;
 use persona_exporter_types::metrics::structs::disk::StorageListInfo;
@@ -9,6 +9,7 @@ use persona_exporter_types::metrics::structs::server::ServerMetrics;
 use persona_exporter_types::metrics::structs::system::SystemInfo;
 use surf::Client;
 use sysinfo::{CpuRefreshKind, DiskRefreshKind, MemoryRefreshKind, ProcessRefreshKind, UpdateKind};
+use ureq::typestate::WithBody;
 
 #[derive(Default)]
 pub struct ToLineProtocolOptions {
@@ -23,11 +24,11 @@ pub struct ToLineProtocolOptions {
 }
 
 pub struct RequestBodyOptions {
-    pub client: Client,
+    pub client: ureq::RequestBuilder<WithBody>,
     pub url: String,
     pub host: String,
-    pub get_params: Vec<ParamField>,
-    pub headers: Vec<HeaderField>,
+    pub get_params: UrlParams,
+    pub headers: HttpHeaders,
 }
 
 pub struct CollectProcessListOptions {
