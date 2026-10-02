@@ -1,12 +1,13 @@
 use crate::config::{AgentConfigFile, DataType};
 use crate::platforms::os::methods::metrics::processes::*;
+use core::time;
 
 use crate::platforms::os::methods::arguments::{
     Buffers, RefreshKindContext, RequestBodyOptions, SystemContext,
 };
 use crate::platforms::os::methods::{
     build_request_body, collect_metrics_as_line_protocol, create_metrics_struct_by_config,
-    get_host, send_request,
+    send_request,
 };
 
 use crate::platforms::os::methods::metrics::components::collect_components_metrics;
@@ -18,10 +19,8 @@ use crate::platforms::os::methods::metrics::system::collect_system_metrics;
 use persona_exporter_types::metrics::traits::Clear;
 use smol::stream::StreamExt;
 use std::time::{Duration, SystemTime};
-use surf::{Client, RequestBuilder};
 use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System, get_current_pid};
 use tracing::{debug, info};
-use url::Url;
 
 pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     // CPU, Memory, Processes & System
@@ -62,7 +61,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     // };
 
     let additional_headers = &config.server.push.http_headers_v2;
-    let get_params = &config.server.push.url_params_v2;
+    let url_params = &config.server.push.url_params_v2;
     let target_url = &config.server.push.url;
     let await_seconds = config.server.push.send_interval;
     let mut interval = smol::Timer::interval(Duration::from_secs(await_seconds));
@@ -72,23 +71,15 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     //     .set_timeout(Some(Duration::from_secs(64)))
     //     .try_into()
     //     .unwrap();
-
-    let client_config = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(64)))
+    let http_client_config = ureq::Agent::config_builder()
+        .timeout_global(Some(time::Duration::from_secs(64)))
         .build();
-    let mut client = ureq::Agent::new_with_config(client_config)
-        .post(target_url)
-        .query_pairs(get_params);
-    for (header, value) in additional_headers {
-        client = client.header(header, value);
-    }
 
     let request_options = RequestBodyOptions {
-        client,
+        config: &http_client_config,
         url: target_url,
-        host: "".to_string(),
-        get_params: Default::default(),
-        headers: Default::default(),
+        get_params: url_params,
+        headers: additional_headers,
     };
 
     let mut line_protocol_buffer: Vec<u8> = Vec::new();
@@ -176,7 +167,7 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
             .unwrap()
             .as_nanos() as i64;
 
-        let mut request: RequestBuilder = build_request_body(&request_options);
+        let request = build_request_body(&request_options);
         match config.agent.data_type {
             DataType::LineProtocol => {
                 line_protocol_buffer.clear();
@@ -188,19 +179,16 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
 
                 info!("Sending data to a specified URL",);
                 debug!("{:#?}", String::from_utf8(line_protocol_buffer.clone()));
-                &line_protocol_buffer;
-                let request =
-                send_request(client, &line_protocol_buffer).await;
 
+                send_request(request, &line_protocol_buffer).await;
             }
             DataType::Json => {
                 info!("Machine metrics: {:#?}", buffers.metrics);
 
                 let json_body = serde_json::json!(buffers.metrics);
 
-                send_request(&client, &json_body.to_string()).await;
+                send_request(request, &json_body.to_string()).await;
             }
         }
-
     }
 }
