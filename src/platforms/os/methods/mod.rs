@@ -17,9 +17,9 @@ use persona_exporter_types::metrics::structs::processes::{ProcessInfo, ProcessLi
 use persona_exporter_types::metrics::structs::server::ServerMetrics;
 use persona_exporter_types::metrics::structs::system::SystemInfo;
 use persona_exporter_types::traits::line_protocol::{FinishLineProtocol, FromWithMeasurement};
-use std::collections::BTreeMap;
-use surf::post;
-use tracing::{Level, debug, error, info};
+use tracing::{Level, debug, error, info, warn};
+use ureq::AsSendBody;
+use ureq::typestate::WithBody;
 use url::Url;
 
 pub fn collect_metrics_as_line_protocol(
@@ -47,13 +47,6 @@ pub fn collect_metrics_as_line_protocol(
                 .as_slice(),
             );
         }
-        // disk.disk_list.iter().for_each(|d| {
-        //     line_buffer.extend_from_slice(
-        //         LineProtocolBuilder::from_with_name(d, "metrics_disk_info")
-        //             .finish(time)
-        //             .as_slice()
-        //     );
-        // });
     }
     if let Some(ref network) = metrics.network {
         line_buffer.extend_from_slice(
@@ -122,63 +115,49 @@ pub fn collect_metrics_as_line_protocol(
     }
 }
 
-pub fn build_request_body(options: &RequestBodyOptions) -> surf::RequestBuilder {
-    let total_url = options.url.clone();
+pub fn build_request_body(options: &RequestBodyOptions) -> ureq::RequestBuilder<WithBody> {
+    let mut request = options
+        .config
+        .new_agent()
+        .post(options.url)
+        .query_pairs(options.get_params);
 
-    // if !options.get_params.is_empty() {
-    //     let mut query_string = String::new();
-    //     let get_url_pairs = form_urlencoded::Serializer::new(&mut query_string);
-    //
-    //     options
-    //         .get_params
-    //         .iter()
-    //         .fold(get_url_pairs, |mut acc, get_param| {
-    //             acc.append_pair(get_param.key.as_str(), get_param.value.as_str());
-    //             acc
-    //         })
-    //         .finish();
-    //     total_url = format!("{}?{}", total_url, query_string);
-    // }
-    // let headers: Vec<(&str, &str)> = options
-    //     .headers
-    //     .iter()
-    //     .map(|h| (h.key.as_str(), h.value.as_str()))
-    //     .collect();
-
-    let mut query_params: BTreeMap<String, String> = BTreeMap::new();
-    for params in &options.get_params {
-        query_params.insert(params.key.clone(), params.value.clone());
+    for (header, value) in options.headers {
+        request = request.header(header, value);
     }
-    let mut request = post(total_url)
-        .query(&query_params)
-        .unwrap()
-        .header(http::header::HOST.as_str(), &options.host)
-        .header(http::header::CONNECTION.as_str(), "close");
 
-    info!("{:#?}", request);
-    for header in &options.headers {
-        request = request.header(header.key.as_str(), header.value.as_str());
-    }
+    debug!("Result of build request: {:#?}", request);
 
     request
 }
 
-pub async fn send_request(request: surf::RequestBuilder, _client: &surf::Client) {
-    let response = request.send().await;
+pub async fn send_request<T: AsSendBody>(request: ureq::RequestBuilder<WithBody>, data: T) {
+    debug!("{:#?}", request);
+    let response = request.send(data);
 
     match response {
-        Ok(success_response) => {
-            let response_status = success_response.status();
-            debug!("{:#?}", success_response);
-            // info!(
-            //     "{}",
-            //     success_response.body_string().await.unwrap_or_default()
-            // );
-            info!(
-                "Response status: {} \"{}\"",
-                response_status as u16,
-                response_status.canonical_reason()
-            );
+        Ok(response) => {
+            let response_status = response.status();
+            let reason = response_status
+                .canonical_reason()
+                .unwrap_or("unknown_reason");
+
+            debug!("{:#?}", response);
+
+            match response_status.as_u16() {
+                100..400 => {
+                    info!("Success response: {} {}", response_status, reason);
+                }
+                400..500 => {
+                    error!("Client side error: {} {}", response_status, reason);
+                }
+                500..600 => {
+                    error!("Server side error: {} {}", response_status, reason);
+                }
+                _ => {
+                    warn!("Unknown status code: {} {}", response_status, reason);
+                }
+            }
         }
         Err(err) => {
             error!("Send error: {}", err)

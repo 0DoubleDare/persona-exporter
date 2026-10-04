@@ -1,15 +1,22 @@
 server:
   push:
-    url: "https://example.com"
+    url: "https://example.com" #
     http_headers:
       - key: "Content-Type"
         value: "application/json"
+
+        Content-Type: "application/json"
     # Your url params, out: https://example.com?example=true&user_id=3
     url_params:
       - key: "example"
         value: "true"
+
+        example: "true"
+
       - key: "user_id"
         value: "3"
+
+        user_id: "3"
     # Metric sending interval in seconds
     send_interval: 5
   # pull:
@@ -23,6 +30,7 @@ agent:
 
 metrics:
   global_tags:
+    # variable_name: value
     hostname: "name-your-server-please"
     env: "test-servers"
   cpu:
@@ -41,7 +49,7 @@ metrics:
     remove_dead_processes: true
     # "cpu_usage" / "memory" / "virtual_memory" / "run_time" / "start_time"
     sort_by: "cpu_usage"
-  networks:
+  network:
     enabled: true
   components:
     enabled: true

@@ -6,7 +6,7 @@ use compact_str::CompactString;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub type HttpHeaders = HashMap<CompactString, CompactString>;
+pub type HttpHeaders = HashMap<String, String>;
 pub type UrlParams = HashMap<CompactString, CompactString>;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentConfigFile {
@@ -134,11 +134,10 @@ pub struct SectionPushModel {
     pub url: String,
     pub retries_connection: Option<u32>,
     pub send_interval: u64,
-    #[serde(default)]
-    pub url_params: Vec<ParamField>,
-    #[serde(default)]
-    pub http_headers: Vec<HeaderField>,
-
+    // #[serde(default)]
+    // pub url_params: Vec<ParamField>,
+    // #[serde(default)]
+    // pub http_headers: Vec<HeaderField>,
     #[serde(default)]
     pub http_headers_v2: HttpHeaders,
     #[serde(default)]
