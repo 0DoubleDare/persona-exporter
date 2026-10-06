@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use persona_exporter::platforms::*;
 use std::process::exit;
 
@@ -15,32 +16,34 @@ use persona_exporter::config::{MainCliArguments, SendModel};
 use persona_exporter::platforms::os::methods::{initial_tracing, load_config};
 use tracing::info;
 
+
+
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 fn main() {
-    println!(
-        "The exporter is running and collecting metrics. To enable logging, run the program with the `-v 2` flag."
-    );
-
     let args: MainCliArguments = argh::from_env();
-    let verbose_level = if args.config_test { 2 } else { args.verbose };
-
-    initial_tracing(verbose_level);
 
     let config = match load_config(args.config_path) {
         Ok(config) => {
-            info!("Config parsed successfully");
             if args.config_test {
-                println!("OK: Configuration test passed");
+                println!("OK");
                 exit(0);
             }
             config
         }
         Err(err) => {
-            println!("ERR: invalid config: {}", err);
+            println!("FAIL - {}", err);
             exit(0);
         }
     };
+
+    println!(
+        "The exporter is running and collecting metrics. To enable logging, run the program with the `-v 2` flag."
+    );
+
+    let verbose_level = if args.config_test { 2 } else { args.verbose };
+    initial_tracing(verbose_level);
+
     info!("{:#?}", config);
 
     smol::block_on(async {

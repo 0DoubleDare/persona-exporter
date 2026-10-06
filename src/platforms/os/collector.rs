@@ -23,6 +23,16 @@ use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System, get_curren
 use tracing::{debug, info};
 
 pub async fn collect_metrics_for_os(config: AgentConfigFile) {
+    // TODO LIST:
+    // Добавить массив url и send_interval - чтобы один экспортер мой слать метрики на разные url с разной переодичностью.
+    // Как это будет выглядеть:
+    // ...
+    //  targets:
+    //      - urls: ["https://example.com/" "https://example2.com"]
+    //        send_interval: 10s
+    //        timeout: 30s
+    // ...
+
     // CPU, Memory, Processes & System
     let mut system_context = (config.metrics.cpu.settings.enabled
         || config.metrics.memory.settings.enabled
@@ -53,24 +63,12 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
         .enabled
         .then(Components::new_with_refreshed_list);
 
-    // let common_metrics = CommonMetricsInformation {
-    //     components: components,
-    //     networks: networks,
-    //     disks: disks,
-    //     system: sys,
-    // };
-
-    let additional_headers = &config.server.push.http_headers_v2;
-    let url_params = &config.server.push.url_params_v2;
+    let additional_headers = &config.server.push.http_headers;
+    let url_params = &config.server.push.url_params;
     let target_url = &config.server.push.url;
     let await_seconds = config.server.push.send_interval;
     let mut interval = smol::Timer::interval(Duration::from_secs(await_seconds));
 
-    // let client: Client = surf::Config::new()
-    //     .set_base_url(Url::parse(target_url).unwrap())
-    //     .set_timeout(Some(Duration::from_secs(64)))
-    //     .try_into()
-    //     .unwrap();
     let http_client_config = ureq::Agent::config_builder()
         .timeout_global(Some(time::Duration::from_secs(64)))
         .build();
@@ -91,7 +89,8 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     let sort_by = get_sort_closure(&config.metrics.processes.sort_by);
     let process_limit = config.metrics.processes.process_limit;
     let global_tags = config.metrics.global_tags;
-    // let mut time: i64;
+
+    // Основной цикл сбора
     while interval.next().await.is_some() {
         info!("Next metrics created after {} seconds", await_seconds);
 

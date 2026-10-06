@@ -89,8 +89,8 @@ impl Default for AgentConfigFile {
                     send_interval: 5,
                     // url_params: Vec::new(),
                     // http_headers: Vec::new(),
-                    http_headers_v2: HashMap::default(),
-                    url_params_v2: HashMap::default(),
+                    http_headers: HashMap::default(),
+                    url_params: HashMap::default(),
                 },
                 pull: SectionPullModel {
                     route: "metrics".to_string(),

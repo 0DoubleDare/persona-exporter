@@ -1,5 +1,6 @@
 pub mod arguments;
 pub mod metrics;
+pub mod context;
 
 use crate::config::AgentConfigFile;
 use crate::platforms::os::methods::arguments::RequestBodyOptions;
@@ -20,7 +21,6 @@ use persona_exporter_types::traits::line_protocol::{FinishLineProtocol, FromWith
 use tracing::{Level, debug, error, info, warn};
 use ureq::AsSendBody;
 use ureq::typestate::WithBody;
-use url::Url;
 
 pub fn collect_metrics_as_line_protocol(
     metrics: &ServerMetrics,
@@ -187,12 +187,12 @@ pub fn initial_tracing(log_level: u8) {
         .init();
 }
 
-pub fn get_host(url: &str) -> String {
-    if let Ok(parsed_url) = Url::parse(url) {
-        return parsed_url.host_str().unwrap_or("localhost").to_string();
-    };
-    "incorrect_url".to_string()
-}
+// pub fn get_host(url: &str) -> String {
+//     if let Ok(parsed_url) = Url::parse(url) {
+//         return parsed_url.host_str().unwrap_or("localhost").to_string();
+//     };
+//     "incorrect_url".to_string()
+// }
 
 pub fn create_metrics_struct_by_config(config: &AgentConfigFile) -> ServerMetrics {
     ServerMetrics {

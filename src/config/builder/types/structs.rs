@@ -1,13 +1,8 @@
-mod additional_types;
-mod enums;
-mod top_level_types;
-
+use crate::config::{DataType, HttpHeaders, ListType, ProcessSortBy, SendModel, UrlParams};
 use compact_str::CompactString;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub type HttpHeaders = HashMap<String, String>;
-pub type UrlParams = HashMap<CompactString, CompactString>;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AgentConfigFile {
     pub agent: AgentSection,
@@ -54,17 +49,6 @@ pub struct EnabledSortByProcessList {
     pub start_time: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub enum SortDirection {
-    #[default]
-    Desc,
-    Asc,
-}
-// #[derive(Serialize, Deserialize, Debug, Default, Clone)]
-// pub struct ProcessListSortConfig {
-//     pub sort_by: ProcessSortBy,
-//     pub override_process_limit: Option<usize>,
-// }
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct MemoryConfig {
     #[serde(flatten)]
@@ -139,21 +123,9 @@ pub struct SectionPushModel {
     // #[serde(default)]
     // pub http_headers: Vec<HeaderField>,
     #[serde(default)]
-    pub http_headers_v2: HttpHeaders,
+    pub http_headers: HttpHeaders,
     #[serde(default)]
-    pub url_params_v2: UrlParams,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct HeaderField {
-    pub key: String,
-    pub value: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-pub struct ParamField {
-    pub key: String,
-    pub value: String,
+    pub url_params: UrlParams,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -161,40 +133,4 @@ pub struct CommonMetricSetting {
     pub enabled: bool,
     pub override_interval: Option<u32>,
     pub override_retries_connection: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum SendModel {
-    Pull,
-    #[default]
-    Push,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
-#[serde(rename_all = "snake_case")]
-pub enum DataType {
-    #[default]
-    Json,
-    LineProtocol,
-    // OpenMetrics,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-pub enum ListType {
-    WhiteList,
-    #[default]
-    IgnoreList,
-}
-
-#[derive(Serialize, Deserialize, Default, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
-pub enum ProcessSortBy {
-    #[default]
-    CpuUsage,
-    Memory,
-    VirtualMemory,
-    RunTime,
-    StartTime,
 }

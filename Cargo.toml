@@ -78,5 +78,5 @@ section = "utility"
 priority = "optional"
 #assets = [
 #    ["../../target/release.yml/persona-exporter", "usr/bin/", "755"],
-#    { source = "README.md", dest = "usr/share/doc/persona-exporter/README", mode = "644" }
+#    { source = "index.md", dest = "usr/share/doc/persona-exporter/README", mode = "644" }
 #]
