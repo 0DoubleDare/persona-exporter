@@ -1,0 +1,26 @@
+# Для некоторых правил понадобится nightly версия компилятора Rust
+
+# Издание
+edition = "2021"
+# Максимальная длина строки
+max_width = 100
+
+# Форматировать код внутри комментариев документации
+format_code_in_doc_comments = true
+
+# Группировка импортов "use ..."
+reorder_imports = true
+# Группировка модулей "pub mod ..."
+reorder_modules = true
+
+# Форматирование комментариев по max_width
+wrap_comments = true
+
+# Перенос аргументов функции. Каждый новый аргумент пишется с новой строки
+# pub fn some(
+#    one: int
+#    two: bool
+#) {
+#   todo!()
+#}
+version = "One"

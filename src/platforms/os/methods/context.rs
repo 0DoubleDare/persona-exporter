@@ -1,3 +1,1 @@
-pub fn generate_global_context() {
-
-}
+pub fn generate_global_context() {}

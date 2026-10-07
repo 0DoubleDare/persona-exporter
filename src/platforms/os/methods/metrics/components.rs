@@ -1,6 +1,6 @@
 use compact_str::ToCompactString;
-use persona_exporter_types::DEFAULT_UNKNOWN_MESSAGE;
 use persona_exporter_types::metrics::structs::components::{ComponentInfo, ComponentListInfo};
+use persona_exporter_types::DEFAULT_UNKNOWN_MESSAGE;
 use sysinfo::Components;
 
 pub fn collect_components_metrics(

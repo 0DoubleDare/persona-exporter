@@ -19,7 +19,7 @@ use crate::platforms::os::methods::metrics::system::collect_system_metrics;
 use persona_exporter_types::metrics::traits::Clear;
 use smol::stream::StreamExt;
 use std::time::{Duration, SystemTime};
-use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System, get_current_pid};
+use sysinfo::{get_current_pid, Components, Disks, Networks, ProcessesToUpdate, System};
 use tracing::{debug, info};
 
 pub async fn collect_metrics_for_os(config: AgentConfigFile) {

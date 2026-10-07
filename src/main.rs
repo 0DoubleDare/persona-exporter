@@ -1,5 +1,5 @@
-use std::convert::Infallible;
 use persona_exporter::platforms::*;
+use std::convert::Infallible;
 use std::process::exit;
 
 #[cfg_attr(target_os = "none", no_std)]
@@ -15,8 +15,6 @@ use mimalloc::MiMalloc;
 use persona_exporter::config::{MainCliArguments, SendModel};
 use persona_exporter::platforms::os::methods::{initial_tracing, load_config};
 use tracing::info;
-
-
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;

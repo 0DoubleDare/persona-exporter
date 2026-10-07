@@ -11,31 +11,46 @@ use tracing::{info, warn};
 const CONFIG_FILENAME: &str = "config.yaml";
 
 impl AgentConfigFile {
+    pub fn match_config_path_by_os() -> PathBuf {
+        if cfg!(target_os = "linux") {
+            PathBuf::from("/etc/persona-exporter")
+        } else {
+            PathBuf::from(env::var("ProgramData").unwrap_or_else(|_| r"C:\ProgramData".to_string()))
+                .join("PersonaMetrics")
+                .join("PersonaExporter")
+        }
+    }
     pub fn new_with(override_config_path: Option<CompactString>) -> Result<Self, ConfigError> {
-        let config_path: PathBuf = {
-            // You might set env variable for override default config path
-            if let Some(override_path) = override_config_path {
-                PathBuf::from(override_path)
-            } else {
-                env::var("PERSONA_EXPORTER_CONFIG_PATH")
-                    .map(PathBuf::from)
-                    .unwrap_or_else(|_| {
-                        // Configuration path for Linux
-                        if cfg!(target_os = "linux") {
-                            PathBuf::from("/etc/persona-exporter")
-                        } else {
-                            // Configuration path for Windows
-                            PathBuf::from(
-                                env::var("ProgramData")
-                                    .unwrap_or_else(|_| r"C:\Program Data".to_string()),
-                            )
-                            .join("PersonaMetrics")
-                            .join("PersonaExporter")
-                        }
-                        .join(CONFIG_FILENAME)
-                    })
-            }
-        };
+        // let config_path: PathBuf = {
+        //
+        //     if let Some(override_path) = override_config_path {
+        //         PathBuf::from(override_path)
+        //     } else {
+        //         env::var("PERSONA_EXPORTER_CONFIG_PATH")
+        //             .map(PathBuf::from)
+        //             .unwrap_or_else(|_| {
+        //                 // Configuration path for Linux
+        //                 if cfg!(target_os = "linux") {
+        //                     PathBuf::from("/etc/persona-exporter")
+        //                 } else {
+        //                     // Configuration path for Windows
+        //                     PathBuf::from(
+        //                         env::var("ProgramData")
+        //                             .unwrap_or_else(|_| r"C:\Program Data".to_string()),
+        //                     )
+        //                     .join("PersonaMetrics")
+        //                     .join("PersonaExporter")
+        //                 }
+        //                 .join(CONFIG_FILENAME)
+        //             })
+        //     }
+        // };
+
+        let config_path = override_config_path.map(PathBuf::from).unwrap_or_else(|| {
+            env::var("PERSONA_EXPORTER_CONFIG_PATH")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| Self::match_config_path_by_os().join(CONFIG_FILENAME))
+        });
 
         if !config_path.exists() {
             // Require SUDO for write in systems directories

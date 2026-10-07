@@ -1,6 +1,6 @@
 pub mod arguments;
-pub mod metrics;
 pub mod context;
+pub mod metrics;
 
 use crate::config::AgentConfigFile;
 use crate::platforms::os::methods::arguments::RequestBodyOptions;
@@ -18,9 +18,9 @@ use persona_exporter_types::metrics::structs::processes::{ProcessInfo, ProcessLi
 use persona_exporter_types::metrics::structs::server::ServerMetrics;
 use persona_exporter_types::metrics::structs::system::SystemInfo;
 use persona_exporter_types::traits::line_protocol::{FinishLineProtocol, FromWithMeasurement};
-use tracing::{Level, debug, error, info, warn};
-use ureq::AsSendBody;
+use tracing::{debug, error, info, warn, Level};
 use ureq::typestate::WithBody;
+use ureq::AsSendBody;
 
 pub fn collect_metrics_as_line_protocol(
     metrics: &ServerMetrics,
