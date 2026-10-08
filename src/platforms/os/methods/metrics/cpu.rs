@@ -7,7 +7,7 @@ pub fn collect_cpus_metrics(
     physical_core_count: usize,
     cpu_list_buffer: &mut CpuListInfo,
 ) {
-    cpu_list_buffer.global_cpu_usage = sys.global_cpu_usage() as f64;
+    cpu_list_buffer.global_cpu_usage = f64::from(sys.global_cpu_usage());
     cpu_list_buffer.threads = sys.cpus().len();
     cpu_list_buffer.physical_core_count = physical_core_count;
 

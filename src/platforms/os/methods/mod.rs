@@ -36,7 +36,7 @@ pub fn collect_metrics_as_line_protocol(
         );
     }
     if let Some(ref disk) = metrics.disk {
-        for mount_point in disk.storage_list.iter() {
+        for mount_point in &disk.storage_list {
             line_buffer.extend_from_slice(
                 LineProtocolBuilder::from_with_name(
                     mount_point,
@@ -160,7 +160,7 @@ pub async fn send_request<T: AsSendBody>(request: ureq::RequestBuilder<WithBody>
             }
         }
         Err(err) => {
-            error!("Send error: {}", err)
+            error!("Send error: {}", err);
         }
     }
 }

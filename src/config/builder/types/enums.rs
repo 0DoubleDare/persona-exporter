@@ -8,7 +8,7 @@ pub enum SendModel {
     Push,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum DataType {
     #[default]

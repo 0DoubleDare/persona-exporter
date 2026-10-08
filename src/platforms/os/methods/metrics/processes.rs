@@ -4,6 +4,7 @@ use persona_exporter_types::metrics::sysinfo::processes::FromWithNormalizeCpu;
 use std::cmp::Ordering;
 use sysinfo::{Pid, System};
 
+#[must_use]
 pub fn get_process_by_id(sys: &System, pid: Pid) -> ProcessInfo {
     let system_process = sys.process(pid).unwrap();
 
@@ -25,7 +26,7 @@ pub fn get_sort_closure(
             |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
         }
         // default also contain ProcessSortBy::CpuUsage
-        _ => |a: &ProcessInfo, b: &ProcessInfo| b.global_cpu_usage.total_cmp(&a.global_cpu_usage),
+        ProcessSortBy::CpuUsage => |a: &ProcessInfo, b: &ProcessInfo| b.global_cpu_usage.total_cmp(&a.global_cpu_usage),
     }
 }
 

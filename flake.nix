@@ -1,3 +1,5 @@
+# Package for NixOS Distributive
+
 {
   description = "Metrics Exporter for Influx DB / Victoria Metrics";
 
@@ -16,13 +18,22 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+
+        cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        projectName = cargoToml.package.name;
+        projectVersion = cargoToml.package.version;
+
       in
       {
         packages.default = pkgs.rustPlatform.buildRustPackage rec {
-          pname = "persona-exporter";
-          version = "0.1.0";
+          pname = projectName;
+          version = projectVersion;
           src = ./.;
-          cargoHash = "sha256-000000000";
+
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+          cargoHash = "sha256-0000000000000000000000000000000000000000000";
 
           nativeBuildInputs = with pkgs; [ pkg-config ];
           buildInputs = with pkgs; [ openssl ];

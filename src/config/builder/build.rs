@@ -1,4 +1,4 @@
-use crate::config::*;
+use crate::config::{AgentConfigFile, AgentSection, SendModel, DataType, ServerSection, SectionPushModel, SectionPullModel, MetricsConfig, ProcessListConfig, CommonMetricSetting, ProcessSortBy, CpuConfig, DisksConfig, NetworkConfig, ListType, SystemConfig, ComponentsConfig, MemoryConfig};
 use compact_str::{CompactString, ToCompactString};
 use config::{Config, ConfigError};
 use config_shellexpand::TemplatedFile;
@@ -11,6 +11,7 @@ use tracing::{info, warn};
 const CONFIG_FILENAME: &str = "config.yaml";
 
 impl AgentConfigFile {
+    #[must_use]
     pub fn match_config_path_by_os() -> PathBuf {
         if cfg!(target_os = "linux") {
             PathBuf::from("/etc/persona-exporter")
@@ -46,11 +47,9 @@ impl AgentConfigFile {
         //     }
         // };
 
-        let config_path = override_config_path.map(PathBuf::from).unwrap_or_else(|| {
-            env::var("PERSONA_EXPORTER_CONFIG_PATH")
-                .map(PathBuf::from)
-                .unwrap_or_else(|_| Self::match_config_path_by_os().join(CONFIG_FILENAME))
-        });
+        let config_path = override_config_path.map_or_else(|| {
+            env::var("PERSONA_EXPORTER_CONFIG_PATH").map_or_else(|_| Self::match_config_path_by_os().join(CONFIG_FILENAME), PathBuf::from)
+        }, PathBuf::from);
 
         if !config_path.exists() {
             // Require SUDO for write in systems directories
@@ -63,7 +62,7 @@ impl AgentConfigFile {
             let write_result = write(&config_path, include_str!("../config.example.yaml"));
 
             match write_result {
-                Ok(_) => {
+                Ok(()) => {
                     info!("Successfully insert default config to {:?}", config_path);
                 }
                 Err(err) => {
@@ -92,7 +91,7 @@ impl AgentConfigFile {
 
 impl Default for AgentConfigFile {
     fn default() -> Self {
-        AgentConfigFile {
+        Self {
             agent: AgentSection {
                 send_model: SendModel::default(),
                 data_type: DataType::default(),
@@ -154,7 +153,7 @@ impl Default for AgentConfigFile {
 
 impl Default for CommonMetricSetting {
     fn default() -> Self {
-        CommonMetricSetting {
+        Self {
             enabled: true,
             override_interval: None,
             override_retries_connection: None,

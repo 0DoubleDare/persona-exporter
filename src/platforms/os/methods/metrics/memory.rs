@@ -11,4 +11,4 @@ pub fn collect_memory_metrics(sys: &System, memory_buffer: &mut MemoryInfo) {
     memory_buffer.free_swap = sys.free_swap();
 }
 
-pub fn initial_memory_snapshot() {}
+pub const fn initial_memory_snapshot() {}

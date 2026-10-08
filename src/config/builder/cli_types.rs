@@ -3,7 +3,7 @@ use compact_str::CompactString;
 
 #[derive(FromArgs, Debug)]
 #[argh(description = "Persona Exporter CLI")]
-/// A Metrics exporter (JSON / line_protocol)
+/// A Metrics exporter (JSON / `line_protocol`)
 pub struct MainCliArguments {
     #[argh(option, short = 'v', default = "0")]
     /// log levels

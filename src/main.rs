@@ -1,5 +1,4 @@
 use persona_exporter::platforms::*;
-use std::convert::Infallible;
 use std::process::exit;
 
 #[cfg_attr(target_os = "none", no_std)]
@@ -35,15 +34,19 @@ fn main() {
         }
     };
 
-    println!(
-        "The exporter is running and collecting metrics. To enable logging, run the program with the `-v 2` flag."
-    );
-
     let verbose_level = if args.config_test { 2 } else { args.verbose };
+
+    if verbose_level != 0  {
+        println!(
+            "The exporter is running and collecting metrics. To enable logging, run the program with the `-v 2` flag."
+        );
+    }
+
     initial_tracing(verbose_level);
 
     info!("{:#?}", config);
 
+    info!("Exporter initialized");
     smol::block_on(async {
         match config.agent.send_model {
             SendModel::Push => {
@@ -55,5 +58,4 @@ fn main() {
             }
         }
     });
-    info!("Exporter initialized");
 }
