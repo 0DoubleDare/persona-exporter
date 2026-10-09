@@ -1,6 +1,5 @@
-use std::cmp::Ordering;
-use persona_exporter_types::metrics::line_protocol::GlobalTags;
 use crate::config::{AgentConfigFile, HttpHeaders, MetricsConfig, ProcessSortBy, UrlParams};
+use persona_exporter_types::metrics::line_protocol::GlobalTags;
 use persona_exporter_types::metrics::structs::components::ComponentListInfo;
 use persona_exporter_types::metrics::structs::cpu::CpuListInfo;
 use persona_exporter_types::metrics::structs::disk::StorageListInfo;
@@ -10,7 +9,11 @@ use persona_exporter_types::metrics::structs::processes::{ProcessInfo, ProcessLi
 use persona_exporter_types::metrics::structs::server::ServerMetrics;
 use persona_exporter_types::metrics::structs::system::SystemInfo;
 use serde::{Deserialize, Serialize};
-use sysinfo::{Components, CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, Networks, Process, ProcessRefreshKind, System, UpdateKind};
+use std::cmp::Ordering;
+use sysinfo::{
+    Components, CpuRefreshKind, DiskRefreshKind, Disks, MemoryRefreshKind, Networks,
+    ProcessRefreshKind, System, UpdateKind,
+};
 use ureq::config::Config;
 
 /// Since a trait signature cannot be used directly as a field type,
@@ -19,16 +22,16 @@ use ureq::config::Config;
 /// this generic type `F` must also specify the type `F`.
 pub struct GlobalContext<'a, F>
 where
-    F: Fn(&ProcessInfo, &ProcessInfo) -> Ordering + 'a
+    F: Fn(&ProcessInfo, &ProcessInfo) -> Ordering + 'a,
 {
-    pub system_context: MetricsSnapshots,
+    pub snapshots: MetricsSnapshots,
     pub buffers: Buffers,
-    pub variables: ConfigContext<'a, F>
+    pub variables: ConfigContext<'a, F>,
 }
 
 pub struct ConfigContext<'a, F>
 where
-    F: Fn(&ProcessInfo, &ProcessInfo) -> Ordering + 'a
+    F: Fn(&ProcessInfo, &ProcessInfo) -> Ordering + 'a,
 {
     pub physical_core_count: usize,
     pub sort_by: F,
@@ -38,22 +41,21 @@ where
 
 impl<'a, F> GlobalContext<'a, F>
 where
-    F: Fn(&ProcessInfo, &ProcessInfo) -> Ordering + 'a
+    F: Fn(&ProcessInfo, &ProcessInfo) -> Ordering + 'a,
 {
     pub fn new(
         config: &'a AgentConfigFile,
         sort_closure: F,
         server_metrics: ServerMetrics,
     ) -> Self {
-        let sys_context = (
-            config.metrics.cpu.settings.enabled
-                || config.metrics.memory.settings.enabled
-                || config.metrics.processes.settings.enabled
-                || config.metrics.system.settings.enabled
-        ).then(|| SystemContext {
-            system_snapshot: System::new(),
-            refresh_kinds: RefreshKindContext::new(&config.metrics),
-        });
+        let sys_context = (config.metrics.cpu.settings.enabled
+            || config.metrics.memory.settings.enabled
+            || config.metrics.processes.settings.enabled
+            || config.metrics.system.settings.enabled)
+            .then(|| SystemContext {
+                snapshot: System::new(),
+                refresh_kinds: RefreshKindContext::new(&config.metrics),
+            });
         let disks = config
             .metrics
             .disks
@@ -74,14 +76,14 @@ where
             .then(Components::new_with_refreshed_list);
 
         let metrics_snapshots = MetricsSnapshots {
-            components: components,
-            networks: networks,
-            disks: disks,
-            system: sys_context,
+            components,
+            networks,
+            disks,
+            system_context: sys_context,
         };
 
         GlobalContext {
-            system_context: metrics_snapshots,
+            snapshots: metrics_snapshots,
             buffers: Buffers {
                 metrics: server_metrics,
                 ..Buffers::default()
@@ -91,7 +93,7 @@ where
                 sort_by: sort_closure,
                 process_limit: config.metrics.processes.process_limit,
                 global_tags: &config.metrics.global_tags,
-            }
+            },
         }
     }
 }
@@ -130,7 +132,7 @@ pub struct MetricsSnapshots {
     pub components: Option<sysinfo::Components>,
     pub networks: Option<sysinfo::Networks>,
     pub disks: Option<sysinfo::Disks>,
-    pub system: Option<SystemContext>,
+    pub system_context: Option<SystemContext>,
 }
 
 pub struct CommonConfigurations {
@@ -156,7 +158,7 @@ pub struct RefreshKindContext {
 
 #[derive(Default)]
 pub struct SystemContext {
-    pub system_snapshot: sysinfo::System,
+    pub snapshot: sysinfo::System,
     pub refresh_kinds: RefreshKindContext,
 }
 

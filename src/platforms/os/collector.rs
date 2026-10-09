@@ -1,8 +1,12 @@
 use crate::config::{AgentConfigFile, DataType};
-use crate::platforms::os::methods::metrics::processes::{get_sort_closure, update_process_list_info, get_process_by_id, write_process_info};
+use crate::platforms::os::methods::metrics::processes::{
+    get_process_by_id, get_sort_closure, update_process_list_info, write_process_info,
+};
 use core::time;
 
-use crate::platforms::os::methods::arguments::{Buffers, GlobalContext, RefreshKindContext, RequestBodyOptions, SystemContext};
+use crate::platforms::os::methods::arguments::{
+    GlobalContext, RequestBodyOptions,
+};
 use crate::platforms::os::methods::{
     build_request_body, collect_metrics_as_line_protocol, create_metrics_struct_by_config,
     send_request,
@@ -17,7 +21,7 @@ use crate::platforms::os::methods::metrics::system::collect_system_metrics;
 use persona_exporter_types::metrics::traits::Clear;
 use smol::stream::StreamExt;
 use std::time::{Duration, SystemTime};
-use sysinfo::{get_current_pid, Components, Disks, Networks, ProcessesToUpdate, System};
+use sysinfo::{get_current_pid, ProcessesToUpdate};
 use tracing::{debug, info};
 
 pub async fn collect_metrics_for_os(config: AgentConfigFile) {
@@ -32,42 +36,9 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
     // ...
     let sort_by = get_sort_closure(&config.metrics.processes.sort_by);
     let mut global_context =
-        GlobalContext::new(
-            &config,
-            sort_by,
-            create_metrics_struct_by_config(&config),
-        );
+        GlobalContext::new(&config, sort_by, create_metrics_struct_by_config(&config));
 
-    // CPU, Memory, Processes & System
-    // let mut system_context = (config.metrics.cpu.settings.enabled
-    //     || config.metrics.memory.settings.enabled
-    //     || config.metrics.processes.settings.enabled
-    //     || config.metrics.processes.include_exporter_metrics
-    //     || config.metrics.system.settings.enabled)
-    //     .then(|| SystemContext {
-    //         system_snapshot: System::new(),
-    //         refresh_kinds: RefreshKindContext::new(&config.metrics),
-    //     });
-
-    let mut disks = config
-        .metrics
-        .disks
-        .settings
-        .enabled
-        .then(Disks::new_with_refreshed_list);
-    let mut networks = config
-        .metrics
-        .network
-        .settings
-        .enabled
-        .then(Networks::new_with_refreshed_list);
-    let mut components = config
-        .metrics
-        .components
-        .settings
-        .enabled
-        .then(Components::new_with_refreshed_list);
-
+    // Specific objects for the push model
     let additional_headers = &config.server.push.http_headers;
     let url_params = &config.server.push.url_params;
     let target_url = &config.server.push.url;
@@ -85,23 +56,13 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
         headers: additional_headers,
     };
 
-    // let mut line_protocol_buffer = &mut global_context.buffers.line_protocol_buffer;
-    // let mut buffers = Buffers {
-    //     metrics: create_metrics_struct_by_config(&config),
-    //     ..Buffers::default()
-    // };
-    // let physical_core_count = System::physical_core_count().unwrap_or(0);
-    // let sort_by = get_sort_closure(&config.metrics.processes.sort_by);
-    // let process_limit = config.metrics.processes.process_limit;
-    // let global_tags = config.metrics.global_tags;
-
-    // Основной цикл сбора
+    // Main
     while interval.next().await.is_some() {
         info!("Next metrics created after {} seconds", await_seconds);
 
         // Метрики требующий sysinfo::System
-        if let Some(ref mut sys_context) = global_context.system_context {
-            let s = &mut sys_context.system_snapshot;
+        if let Some(ref mut sys_context) = global_context.snapshots.system_context {
+            let s = &mut sys_context.snapshot;
             // Здесь не нужна проверка, включена ли та или иная секция метрик в конфиге. Так как если выключена
             // То buffers.metrics.memory будет равнятся None. Такое поведение заложено ещё в инициализации структуры ServerMetrics
             if let Some(ref mut mem_buf) = global_context.buffers.metrics.memory {
@@ -133,9 +94,13 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
                 // Информация о процессах
                 update_process_list_info(s, &mut process_list_buf.process_list);
                 //// Сортируем по заданной функции aka замыканию
-                process_list_buf.process_list.sort_unstable_by(&global_context.variables.sort_by);
+                process_list_buf
+                    .process_list
+                    .sort_unstable_by(&global_context.variables.sort_by);
                 //// Обрезаем готовый массив
-                process_list_buf.process_list.truncate(global_context.variables.process_limit);
+                process_list_buf
+                    .process_list
+                    .truncate(global_context.variables.process_limit);
 
                 // Отдельная информация о самом экспортере
                 if config.metrics.processes.include_exporter_metrics
@@ -149,38 +114,50 @@ pub async fn collect_metrics_for_os(config: AgentConfigFile) {
             }
         }
 
-        if let (Some(disk_buffer), Some(d)) = (&mut global_context.buffers.metrics.disk, &mut disks) {
+        if let (Some(disk_buffer), Some(d)) = (
+            &mut global_context.buffers.metrics.disk,
+            &mut global_context.snapshots.disks,
+        ) {
             d.refresh(false);
             disk_buffer.clear_dynamic();
             collect_storage_list_metrics(d, disk_buffer);
         }
-        if let (Some(network_buffer), Some(n)) = (&mut global_context.buffers.metrics.network, &mut networks) {
+        if let (Some(network_buffer), Some(n)) = (
+            &mut global_context.buffers.metrics.network,
+            &mut global_context.snapshots.networks,
+        ) {
             n.refresh(false);
             network_buffer.clear_dynamic();
             collect_network_metrics(n, network_buffer);
         }
-        if let (Some(components_info), Some(c)) = (&mut global_context.buffers.metrics.components, &mut components)
-        {
+        if let (Some(components_info), Some(c)) = (
+            &mut global_context.buffers.metrics.components,
+            &mut global_context.snapshots.components,
+        ) {
             c.refresh(false);
             components_info.clear_dynamic();
             collect_components_metrics(c, components_info);
         }
 
-        global_context.buffers.metrics.time = i64::try_from( SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()).unwrap_or_default();
+        global_context.buffers.metrics.time = i64::try_from(
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+        )
+        .unwrap_or_default();
 
         let request = build_request_body(&request_options);
         match config.agent.data_type {
             DataType::LineProtocol => {
-                let mut line_buffer = std::mem::take(&mut global_context.buffers.line_protocol_buffer);
+                let mut line_buffer =
+                    std::mem::take(&mut global_context.buffers.line_protocol_buffer);
 
                 line_buffer.clear();
                 collect_metrics_as_line_protocol(
                     &global_context.buffers.metrics,
                     &mut line_buffer,
-                    &global_context.variables.global_tags,
+                    global_context.variables.global_tags,
                 );
 
                 info!("Sending data to a specified URL",);

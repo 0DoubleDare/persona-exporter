@@ -40,3 +40,20 @@ jobs:
       - name: Test code
         run: |
           cargo test
+
+  nixos-derivation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: determinateSystems/nix-installer-action@v9
+
+      - name: Cache Nix
+        uses: determinateSystems/magic-nix-cache-action@v9
+
+      - name: Test flake.nix
+        run: |
+          nix flake check ./flake.nix
+          nix fmt -- --check ./flake.nix
+          nix build --dry-run ./flake.nix

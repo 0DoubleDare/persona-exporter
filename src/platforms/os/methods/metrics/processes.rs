@@ -26,7 +26,9 @@ pub fn get_sort_closure(
             |a: &ProcessInfo, b: &ProcessInfo| b.start_time.cmp(&a.start_time)
         }
         // default also contain ProcessSortBy::CpuUsage
-        ProcessSortBy::CpuUsage => |a: &ProcessInfo, b: &ProcessInfo| b.global_cpu_usage.total_cmp(&a.global_cpu_usage),
+        ProcessSortBy::CpuUsage => {
+            |a: &ProcessInfo, b: &ProcessInfo| b.global_cpu_usage.total_cmp(&a.global_cpu_usage)
+        }
     }
 }
 

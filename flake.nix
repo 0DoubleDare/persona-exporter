@@ -18,6 +18,7 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+#        formatterPkgs = nixpkgs.legacyPackages.${system};
 
         cargoToml = builtins.fromTOML (builtins.readFile ./Cargo.toml);
         projectName = cargoToml.package.name;
@@ -25,6 +26,7 @@
 
       in
       {
+#        formatter.${system} = formatterPkgs.nixfmt-rfc-style;
         packages.default = pkgs.rustPlatform.buildRustPackage rec {
           pname = projectName;
           version = projectVersion;

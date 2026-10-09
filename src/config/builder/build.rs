@@ -1,4 +1,8 @@
-use crate::config::{AgentConfigFile, AgentSection, SendModel, DataType, ServerSection, SectionPushModel, SectionPullModel, MetricsConfig, ProcessListConfig, CommonMetricSetting, ProcessSortBy, CpuConfig, DisksConfig, NetworkConfig, ListType, SystemConfig, ComponentsConfig, MemoryConfig};
+use crate::config::{
+    AgentConfigFile, AgentSection, CommonMetricSetting, ComponentsConfig, CpuConfig, DataType,
+    DisksConfig, ListType, MemoryConfig, MetricsConfig, NetworkConfig, ProcessListConfig,
+    ProcessSortBy, SectionPullModel, SectionPushModel, SendModel, ServerSection, SystemConfig,
+};
 use compact_str::{CompactString, ToCompactString};
 use config::{Config, ConfigError};
 use config_shellexpand::TemplatedFile;
@@ -47,9 +51,15 @@ impl AgentConfigFile {
         //     }
         // };
 
-        let config_path = override_config_path.map_or_else(|| {
-            env::var("PERSONA_EXPORTER_CONFIG_PATH").map_or_else(|_| Self::match_config_path_by_os().join(CONFIG_FILENAME), PathBuf::from)
-        }, PathBuf::from);
+        let config_path = override_config_path.map_or_else(
+            || {
+                env::var("PERSONA_EXPORTER_CONFIG_PATH").map_or_else(
+                    |_| Self::match_config_path_by_os().join(CONFIG_FILENAME),
+                    PathBuf::from,
+                )
+            },
+            PathBuf::from,
+        );
 
         if !config_path.exists() {
             // Require SUDO for write in systems directories

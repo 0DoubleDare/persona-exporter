@@ -36,7 +36,7 @@ fn main() {
 
     let verbose_level = if args.config_test { 2 } else { args.verbose };
 
-    if verbose_level != 0  {
+    if verbose_level != 0 {
         println!(
             "The exporter is running and collecting metrics. To enable logging, run the program with the `-v 2` flag."
         );
